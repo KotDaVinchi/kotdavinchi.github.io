@@ -1,0 +1,11 @@
+.chart {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.chart canvas {
+    /*flex: 0 0 250px;*/
+    margin-bottom: 20px;
+}
