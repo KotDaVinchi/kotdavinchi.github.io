@@ -1,11 +1,18 @@
+html, body{
+    padding: 0;
+    margin: 0;
+}
+
 .chart {
     display: flex;
     flex-flow: column nowrap;
     justify-content: center;
     align-items: flex-start;
+    margin: 10px;
 }
 
 .chart canvas {
     /*flex: 0 0 250px;*/
     margin-bottom: 20px;
+    border: solid gray 1px;
 }
