@@ -9,10 +9,17 @@ html, body{
     justify-content: center;
     align-items: flex-start;
     margin: 10px;
+    position: relative;
 }
 
 .chart canvas {
     /*flex: 0 0 250px;*/
     margin-bottom: 20px;
     border: solid gray 1px;
+}
+
+.chart .fullChart{
+    position: absolute;
+    bottom: 0;
+    z-index: -1;
 }
