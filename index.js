@@ -77,13 +77,10 @@ class Chart {
 
         const columns = this.chartData.columns;
         const length = columns['x'].length;
-        const xMult = 1 / (columns['x'][length - 1] - columns['x'][0]) * this.chart.width;
-        const xFix = this.control.slide.start/this.control.width * this.chart.width;
-        const xFixMult = this.chart.width/(this.control.slide.length);
-        console.log('xfix', xFix);
-        console.log('xfixmult', this.chart.width, (this.control.slide.length), xFixMult);
+        const xMult = 1 / (columns['x'][length - 1] - columns['x'][0]);
+        const xFix = this.control.slide.start/this.control.width;
+        const xFixMult = this.chart.width*this.chart.width/(this.control.slide.length);
         const yMult = 1 / Math.max.apply(null, Object.values(this.chartData.maxs)) * this.chart.height;
-
 
         //lines
         this.chartCtx.lineWidth = 1.5;
@@ -116,7 +113,10 @@ class Chart {
             this.controlCtx.strokeStyle = this.chartData.colors[lineName];
             this.controlCtx.beginPath();
             for (let i = 0; i < length; i++) {
-                this.controlCtx.lineTo(roundFn((columns['x'][i] - columns['x'][0]) * xMult), roundFn(this.control.height - columns[lineName][i] * yMult));
+                this.controlCtx.lineTo(
+                    roundFn((columns['x'][i] - columns['x'][0]) * xMult),
+                    roundFn(this.control.height - columns[lineName][i] * yMult)
+                );
             }
             this.controlCtx.stroke();
         }
@@ -130,7 +130,7 @@ class Chart {
         this.controlCtx.fillStyle = '#6666FF33';
         this.controlCtx.fillRect(0, 0, slide.start, this.control.height);
         this.controlCtx.fillRect(slide.start + slide.length, 0, this.control.width - slide.start + slide.length, this.control.height);
-        this.controlCtx.svCtx().strokeRect.log(slide.start, 0, slide.length, this.control.height);
+        this.controlCtx.strokeRect(slide.start, 0, slide.length, this.control.height);
 
         console.timeEnd('drawControl');
     }
@@ -146,10 +146,10 @@ class Chart {
             return;
         }
 
-        const offset = {x: e.clientX - this.controlDOM.offsetLeft, y: e.clientY - this.controlDOM.offsetTop};
+        const offsetXfromControl = e.clientX - this.controlDOM.offsetLeft - slide.start;
         //offset.x-slide.start can be precalculated
-        const targetType = offset.x > slide.start && offset.x < slide.start + slide.panelLength ? 'leftPanel' :
-            offset.x < slide.start + slide.length && offset.x > slide.start + slide.length - slide.panelLength ? 'rightPanel' :
+        const targetType = offsetXfromControl > 0 && offsetXfromControl < slide.panelLength ? 'leftPanel' :
+            offsetXfromControl < slide.length && offsetXfromControl > slide.length - slide.panelLength ? 'rightPanel' :
                 null;
 
         const changeControlAction = (e) => {
@@ -159,6 +159,7 @@ class Chart {
                     const newStart = Math.max(0, Math.min(slide.start + slide.length - slide.panelLength * 2, possibleStart));
                     slide.length = slide.start + slide.length - newStart;
                     slide.start = newStart;
+
                 } else if (targetType === 'rightPanel') {
                     const possibleEnd = roundFn(e.clientX - this.controlDOM.offsetLeft + slide.panelLength / 2);
                     const newEnd = Math.max(slide.start + slide.panelLength * 2, Math.min(this.control.width, possibleEnd));
