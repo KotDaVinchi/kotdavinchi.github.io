@@ -5,15 +5,18 @@ const slideLengthRate = 0.2;
 const slidePanelLength = 0.02;
 
 let _someCtx = null;
-Object.prototype.svCtx = function() {
+Object.prototype.svCtx = function () {
     _someCtx = this;
     return this;
 };
 
-Function.prototype.log = function(...arg) {
+Function.prototype.log = function (...arg) {
     console.log(...arg);
     return this.apply(_someCtx, arg);
 };
+
+const oneDay = 1000 * 60 * 60 * 24;
+const roundArr = [1, 2, 4, 8, 16, 32].map(x => oneDay * x);
 
 // console.log = ()=>{};
 
@@ -27,7 +30,7 @@ class Chart {
         }, {});
         this.chartData.maxs = {};
         Object.keys(this.chartData.colors).forEach(name => {
-            this.chartData.maxs[name] = Math.max.apply(null, this.chartData.columns[name]);
+            this.chartData.maxs[name] = Math.max.apply(null, this.chartData.columns[name]);//old, to delete
         });
 
         //todo: creating canvas end controls
@@ -51,14 +54,15 @@ class Chart {
         this.chart = {
             width: chart.width,
             height: chart.height,
-            range : {}
+            range: {}
         };
         this.recalcChartRange();
+        this.chartCtx.textAlign = 'center';
 
         const fullChart = this.DOM.getElementsByClassName('fullChart')[0];
         this.fullChartCtx = fullChart.getContext('2d');
         this.fullChart = {
-            width : fullChart.width,
+            width: fullChart.width,
             height: fullChart.height
         };
 
@@ -67,13 +71,18 @@ class Chart {
         this.drawChart();
         control.addEventListener('mousedown', this.mouseActionControl.bind(this));
         control.addEventListener('dblclick', this.mouseActionControl.bind(this));
+        chart.addEventListener('click', () => {
+            this.drawFullChart();
+            this.drawControl();
+            this.drawChart();
+        });
 
         console.log(this);
     }
 
     recalcChartRange() {
         this.chart.range = {
-            left : Math.max(0, Math.floor(this.control.slide.start / this.controlDOM.width * this.chartData.columns['x'].length) - 1),
+            left: Math.max(0, Math.floor(this.control.slide.start / this.control.width * this.chartData.columns['x'].length) - 1),
             right: Math.min(
                 this.chartData.columns['x'].length - 1,
                 Math.ceil((this.control.slide.start + this.control.slide.length) / this.controlDOM.width * this.chartData.columns['x'].length) + 1
@@ -81,22 +90,43 @@ class Chart {
         };
     }
 
-    drawChart(){
+    makeScaleDivisions(a, b) {
+        const diff = (b - a) / 6;
+        const precMap = roundArr
+            .map(x => Math.abs(diff - x));
+        const iMin = precMap.reduce((acc, min, i) => {
+            if (min < acc.min) {
+                return {i, min}
+            }
+            return acc
+        }, {
+            i: -1,
+            min: Number.MAX_SAFE_INTEGER
+        }).i;
+        const firstLabel = Math.ceil((a + 1) / roundArr[iMin]) * roundArr[iMin];
+        // console.log('diff', diff);
+        // console.log('precMap', precMap);
+        // console.log('iMin', iMin);
+        // console.log('roundArr[iMin]', roundArr[iMin]);
+        // console.log('firstLabel', firstLabel);
+        // console.log('(b-a)/roundArr[iMin]', (b - a) / roundArr[iMin]);
+        // console.log('(b-roundArr[iMin])/roundArr[iMin]', (b - firstLabel) / roundArr[iMin]);
+        return Array(Math.ceil((b - firstLabel) / roundArr[iMin])).fill(0).map((_, i) => firstLabel + roundArr[iMin] * i);
+    }
+
+    drawChart() {
         console.time('drawChart');
         this.recalcChartRange();
         this.chartCtx.clearRect(0, 0, this.chart.width, this.chart.height);
 
         const columns = this.chartData.columns;
         const length = columns['x'].length;
-        const xMult = 1 / (columns['x'][length - 1] - columns['x'][0]);
-        const xFix = this.control.slide.start/this.control.width;
-        const xFixMult = this.chart.width*this.chart.width/(this.control.slide.length);
-        const yMult = 1 / Math.max.apply(null, Object.values(this.chartData.maxs)) * this.chart.height;
+        const xFix = this.control.slide.start / this.control.width;
+        const xFixMult = this.chart.width * this.chart.width / (this.control.slide.length);
+        const slicedAxis = Object.values(columns).slice(1).map(arr => arr.slice(this.chart.range.left, this.chart.range.right))
+        const yMult = 1 / Math.max.apply(null, [].concat.call(...slicedAxis)) * this.chart.height;
 
-        // console.log(
-        // 	Math.ceil(this.control.slide.start / this.controlDOM.width * this.chartData.columns['x'].length),
-        // 	Math.floor((this.control.slide.start + this.control.slide.length) / this.controlDOM.width * this.chartData.columns['x'].length),
-        // );
+
         //lines
         this.chartCtx.lineWidth = 1.5;
         for (let lineName in this.chartData.colors) {
@@ -105,31 +135,28 @@ class Chart {
             this.chartCtx.beginPath();
             for (let i = this.chart.range.left; i <= this.chart.range.right; i++) {
                 this.chartCtx.lineTo(
-                    roundFn(((columns['x'][i] - columns['x'][0]) * xMult - xFix) * xFixMult),
+                    roundFn((((columns['x'][i] - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0])) - xFix) * xFixMult),
                     roundFn(this.chart.height - columns[lineName][i] * yMult)
                 );
             }
             this.chartCtx.stroke();
         }
 
-        // const left = Math.ceil(this.control.slide.start / this.controlDOM.width * this.chartData.columns['x'].length)-1,
-        //       right = Math.floor((this.control.slide.start + this.control.slide.length) / this.controlDOM.width * this.chartData.columns['x'].length);
-        //
-        //
-        // this.chartCtx.lineWidth = 1;
-        // this.chartCtx.strokeStyle = '#888';
-        // for (let i = left; i <= right; i++) {
-        // 	this.chartCtx.beginPath();
-        // 	this.chartCtx.moveTo(
-        // 		roundFn(((columns['x'][i] - columns['x'][0]) * xMult - xFix) * xFixMult),
-        // 		this.chart.height
-        // 	);
-        // 	this.chartCtx.lineTo(
-        // 		roundFn(((columns['x'][i] - columns['x'][0]) * xMult - xFix) * xFixMult),
-        // 		this.chart.height-30
-        // 	);
-        // 	this.chartCtx.stroke();
-        // }
+        const left = this.chart.range.left + 1,
+            right = this.chart.range.right - 1;
+
+
+        // console.log('most left division', roundFn(((columns['x'][left] - columns['x'][0]) * (1 / (columns['x'][length - 1] - columns['x'][0])) - xFix) * xFixMult));
+        // console.log('most right division', roundFn(((columns['x'][right] - columns['x'][0]) * (1 / (columns['x'][length - 1] - columns['x'][0])) - xFix) * xFixMult));
+        console.log(this.chart.width);
+        const divisions = this.makeScaleDivisions(columns['x'][left], columns['x'][right]);
+        this.chartCtx.lineWidth = 1.5;
+        this.chartCtx.strokeStyle = '#888';
+        for (let i = 0; i < divisions.length; i++) {
+            this.chartCtx.fillText(new Date(divisions[i]).toString().slice(4,10),
+                roundFn(((divisions[i] - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0]) - xFix) * xFixMult),
+                this.chart.height - 5)
+        }
 
         console.timeEnd('drawChart');
     }
@@ -178,9 +205,9 @@ class Chart {
     mouseActionControl(e) {
         const slide = this.control.slide;
 
-        if(e.type === 'dblclick'){
-            slide.start+=slide.length/4;
-            slide.length-=slide.length/2;
+        if (e.type === 'dblclick') {
+            slide.start += slide.length / 4;
+            slide.length -= slide.length / 2;
             this.drawChart();
             this.drawControl();
             return;
@@ -192,35 +219,35 @@ class Chart {
                 null;
 
         const changeControlAction = (e) => {
-                  const controlOffsetX = e.clientX - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
-                  if (targetType === 'leftPanel') {
-                      const possibleStart = roundFn(controlOffsetX - slide.panelLength / 2);
-                      const newStart = Math.max(0, Math.min(slide.start + slide.length - slide.panelLength * 2, possibleStart));
-                      slide.length = slide.start + slide.length - newStart;
-                      slide.start = newStart;
+                const controlOffsetX = e.clientX - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
+                if (targetType === 'leftPanel') {
+                    const possibleStart = roundFn(controlOffsetX - slide.panelLength / 2);
+                    const newStart = Math.max(0, Math.min(slide.start + slide.length - slide.panelLength * 2, possibleStart));
+                    slide.length = slide.start + slide.length - newStart;
+                    slide.start = newStart;
 
-                  } else if (targetType === 'rightPanel') {
-                      const possibleEnd = roundFn(controlOffsetX + slide.panelLength / 2);
-                      const newEnd = Math.max(slide.start + slide.panelLength * 2, Math.min(this.control.width, possibleEnd));
-                      slide.length = newEnd - slide.start;
+                } else if (targetType === 'rightPanel') {
+                    const possibleEnd = roundFn(controlOffsetX + slide.panelLength / 2);
+                    const newEnd = Math.max(slide.start + slide.panelLength * 2, Math.min(this.control.width, possibleEnd));
+                    slide.length = newEnd - slide.start;
 
-                  } else {
-                      const possibleStart = roundFn(controlOffsetX - slide.length / 2);
-                      slide.start = Math.max(0, Math.min(this.control.width - slide.length, possibleStart));
-                  }
+                } else {
+                    const possibleStart = roundFn(controlOffsetX - slide.length / 2);
+                    slide.start = Math.max(0, Math.min(this.control.width - slide.length, possibleStart));
+                }
 
-                  requestAnimationFrame(() => {
-                      this.drawControl();
-                      this.drawChart();
-                  });
+                requestAnimationFrame(() => {
+                    this.drawControl();
+                    this.drawChart();
+                });
 
-                  // this.control.start
-              },
-              stopWatch           = (e) => {
-                  document.body.removeEventListener('mousemove', changeControlAction);
-                  document.body.removeEventListener('mouseup', stopWatch);
-                  document.body.removeEventListener('mouseleave', stopWatch);
-              };
+                // this.control.start
+            },
+            stopWatch = (e) => {
+                document.body.removeEventListener('mousemove', changeControlAction);
+                document.body.removeEventListener('mouseup', stopWatch);
+                document.body.removeEventListener('mouseleave', stopWatch);
+            };
         changeControlAction(e);
         document.body.addEventListener('mousemove', changeControlAction, {passive: true});
         document.body.addEventListener('mouseup', stopWatch, {once: true, passive: true});
@@ -233,7 +260,7 @@ class Chart {
         for (var i = 0; i < n; i++) {
             for (var j = 0; j < n; j++) {
                 this.chartCtx.fillStyle = 'rgb(' + Math.floor(255 * (1 - i / n)) + ', ' +
-                                          Math.floor(255 * (1 - j / n)) + ', 0)';
+                    Math.floor(255 * (1 - j / n)) + ', 0)';
                 this.chartCtx.fillRect(j * ampf, i * ampf, ampf, ampf);
             }
             const gray = Math.floor(255 * (1 - i / n));
