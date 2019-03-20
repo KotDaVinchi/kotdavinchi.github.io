@@ -69,8 +69,8 @@ class Chart {
         this.drawFullChart();
         this.drawControl();
         this.drawChart();
-        control.addEventListener('mousedown', this.mouseActionControl.bind(this));
-        control.addEventListener('dblclick', this.mouseActionControl.bind(this));
+        control.addEventListener('mousedown', this.mouseActionControl.bind(this), {passive: true});
+        control.addEventListener('dblclick', this.mouseActionControl.bind(this), {passive: true});
         chart.addEventListener('click', () => {
             this.drawFullChart();
             this.drawControl();
@@ -85,7 +85,7 @@ class Chart {
             left: Math.max(0, Math.floor(this.control.slide.start / this.control.width * this.chartData.columns['x'].length) - 1),
             right: Math.min(
                 this.chartData.columns['x'].length - 1,
-                Math.ceil((this.control.slide.start + this.control.slide.length) / this.controlDOM.width * this.chartData.columns['x'].length) + 1
+                Math.ceil((this.control.slide.start + this.control.slide.length) / this.control.width * this.chartData.columns['x'].length) + 1
             )
         };
     }
