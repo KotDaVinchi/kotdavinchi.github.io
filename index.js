@@ -36,6 +36,12 @@ class Chart {
 
         //todo: creating canvas end controls
 
+        this.graphController = new GraphController({
+            chart: this.drawChart.bind(this),
+            fChart: this.drawFullChart.bind(this),
+            ctrl: this.drawControl.bind(this)
+        });
+
         const control = this.DOM.getElementsByClassName('chartsControl')[0];
         this.controlDOM = control;
         this.controlCtx = control.getContext('2d');
@@ -55,9 +61,17 @@ class Chart {
         this.chart = {
             width: chart.width,
             height: chart.height,
-            range: {}
+            range: {},
         };
-        this.recalcChartRange();
+        this.graphController.animatedValueFactory({
+            ctx: this.chart,
+            name: 'maxHeight',
+            startValue: Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
+                .slice(1)//remove x axis
+                .map(arr => arr.slice(this.chart.range.left, this.chart.range.right)))),//todo:DRY!
+            speed: roundFn(this.chart.height*5),
+            updFnIds: ['chart']
+        });
 
         const fullChart = this.DOM.getElementsByClassName('fullChart')[0];
         this.fullChartCtx = fullChart.getContext('2d');
@@ -66,21 +80,18 @@ class Chart {
             height: fullChart.height
         };
 
-        this.drawFullChart();
-        this.drawControl();
-        this.drawChart();
+        this.recalcChartVals();
+        this.graphController.update();
         control.addEventListener('mousedown', this.mouseActionControl.bind(this), {passive: true});
         control.addEventListener('dblclick', this.mouseActionControl.bind(this), {passive: true});
         chart.addEventListener('click', () => {
-            this.drawFullChart();
-            this.drawControl();
-            this.drawChart();
+            this.graphController.update();
         });
 
         console.log(this);
     }
 
-    recalcChartRange() {
+    recalcChartVals() {
         this.chart.range = {
             left: Math.max(0, Math.floor(this.control.slide.start / this.control.width * this.chartData.columns['x'].length) - 1),
             right: Math.min(
@@ -88,6 +99,9 @@ class Chart {
                 Math.ceil((this.control.slide.start + this.control.slide.length) / this.control.width * this.chartData.columns['x'].length) + 1
             )
         };
+        this.chart.maxHeight =  Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
+            .slice(1)//remove x axis
+            .map(arr => arr.slice(this.chart.range.left, this.chart.range.right))));
     }
 
     makeScaleDivisions(a, b, template) {
@@ -116,16 +130,13 @@ class Chart {
 
     drawChart() {
         console.time('drawChart');
-        this.recalcChartRange();
         this.chartCtx.clearRect(0, 0, this.chart.width, this.chart.height);
 
         const columns = this.chartData.columns;
         const length = columns['x'].length;
         const xFix = this.control.slide.start / this.control.width;
         const xFixMult = this.chart.width * this.chart.width / (this.control.slide.length);
-        const maxXValue = Math.max.apply(null, [].concat.call(...Object.values(columns)
-            .slice(1)//remove x axis
-            .map(arr => arr.slice(this.chart.range.left, this.chart.range.right))));
+        const maxXValue = this.chart.maxHeight;
         const yMult = 1 / maxXValue * (this.chart.height - dateScalePaddingPx * 2);
 
 
@@ -230,8 +241,7 @@ class Chart {
         if (e.type === 'dblclick') {
             slide.start += slide.length / 4;
             slide.length -= slide.length / 2;
-            this.drawChart();
-            this.drawControl();
+            this.graphController.update(['chart','ctrl']);
             return;
         }
 
@@ -258,10 +268,8 @@ class Chart {
                     slide.start = Math.max(0, Math.min(this.control.width - slide.length, possibleStart));
                 }
 
-                requestAnimationFrame(() => {
-                    this.drawControl();
-                    this.drawChart();
-                });
+                this.recalcChartVals();
+                this.graphController.update(['chart','ctrl']);
 
                 // this.control.start
             },
