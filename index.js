@@ -20,6 +20,8 @@ const oneDay = 1000 * 60 * 60 * 24;
 const roundDateTemplate = [1, 2, 4, 8, 16, 32].map(x => oneDay * x);
 
 // console.log = ()=>{};
+console.time = ()=>{};
+console.timeEnd = ()=>{};
 
 class Chart {
     constructor(params) {
@@ -69,7 +71,7 @@ class Chart {
             startValue: Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
                 .slice(1)//remove x axis
                 .map(arr => arr.slice(this.chart.range.left, this.chart.range.right)))),//todo:DRY!
-            speed: roundFn(this.chart.height*5),
+            speed: roundFn(this.chart.height*0.2),
             updFnIds: ['chart']
         });
 
@@ -302,5 +304,5 @@ class Chart {
 }
 
 
-const chart = new Chart({id: 'chart1', chartData: chart_data[4]});
+const chart = new Chart({id: 'chart1', chartData: chart_data[1]});
 // chart.hello('tlg');

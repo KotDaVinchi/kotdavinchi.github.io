@@ -3,23 +3,24 @@ class GraphController {
 
         this.updateFunctions = updateFunctions;
         this.drawPending = [];
+        this.callbacks = [];
     }
 
     update(updatedNames = Object.keys(this.updateFunctions), cb) {
         if (this.drawPending.length) {
-            const intersect = this.drawPending.filter(value => updatedNames.includes(value));
-            if(intersect.length === this.drawPending.length){
-                return;
-            }else {
-                this.drawPending = this.drawPending.concat(updatedNames);
-                this.drawPending = this.drawPending.filter((v,i) => names.indexOf(v) === i);
-            }
+            this.drawPending = this.drawPending.concat(updatedNames);
+            cb && this.callbacks.push(cb);
+            return;
         }
         this.drawPending = updatedNames;
+        cb && this.callbacks.push(cb);
         requestAnimationFrame((time) => {
+            const forUpdate = this.drawPending.filter((v, i) => this.drawPending.indexOf(v) === i);
+            const callbacks = this.callbacks;//for don't remove callbacks, maked in recursion
             this.drawPending = [];
-            cb && cb(time);
-            for (const name of updatedNames) {
+            this.callbacks = [];
+            callbacks.forEach(cb => cb(time));
+            for (const name of forUpdate) {
                 this.updateFunctions.hasOwnProperty(name) && this.updateFunctions[name](time);
             }
         });
@@ -31,16 +32,22 @@ class GraphController {
             inWork = false,
             lastTime = 0;
         const updFn = (time) => {
+            if(lastTime === 0){//performance.now() has some issues in work without dev tools. Like performance.now() in setter was less then time in this callback
+                lastTime = time;
+                this.update(updFnIds, updFn);
+                return;
+            }
             const changeTime = time - lastTime;
             lastTime = time;
-            currValue += Math.sign(needValue-currValue)*changeTime*speed;
-            if(Math.abs(currValue)+Number.EPSILON > Math.abs(needValue)){
-                currValue=needValue;
+            const delta = Math.sign(needValue - currValue) * changeTime * speed;
+            if (Math.abs(delta) > Math.abs(needValue - currValue) || delta === 0) {
+                currValue = needValue;
                 this.update(updFnIds);
                 inWork = false;
                 return;
             }
-            this.update(updFnIds,updFn)
+            currValue += delta;
+            this.update(updFnIds, updFn)
         };
         Object.defineProperty(ctx, name, {
             get: () => {
@@ -48,9 +55,9 @@ class GraphController {
             },
             set: (value) => {
                 needValue = value;
-                if(inWork) return;
+                if (inWork) return;
                 inWork = true;
-                lastTime = performance.now();
+                lastTime = 0;
                 this.update(updFnIds, updFn)
             }
         })
