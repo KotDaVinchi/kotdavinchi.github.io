@@ -1,25 +1,62 @@
-html, body{
-    padding: 0;
-    margin: 0;
+html, body {
+	padding : 0;
+	margin  : 0;
 }
 
 .chart {
-    display: flex;
-    flex-flow: column nowrap;
-    justify-content: center;
-    align-items: flex-start;
-    margin: 10px;
-    position: relative;
+	display         : flex;
+	flex-flow       : column nowrap;
+	justify-content : center;
+	align-items     : flex-start;
+	margin          : 10px;
+	position        : relative;
 }
 
 .chart canvas {
-    /*flex: 0 0 250px;*/
-    margin-bottom: 20px;
-    border: solid gray 1px;
+	/*flex: 0 0 250px;*/
+	margin-bottom : 20px;
+	border        : solid gray 1px;
 }
 
-.chart .fullChart{
-    position: absolute;
-    bottom: 0;
-    z-index: -1;
+.chart .fullChart {
+	position : absolute;
+	bottom   : 0;
+	z-index  : -1;
+}
+
+div#info {
+	position      : absolute;
+	display       : flex;
+	flex-flow     : column nowrap;
+	border        : 1px solid lightgray;
+	background: white;
+	border-radius : 5px;
+	padding       : 5px 0px;
+	font-family   : sans-serif;
+	pointer-events: none;
+	min-width: 110px;
+}
+
+div#info .date {
+	margin    : 0px 10px 10px;
+	font-size : 16px;
+}
+
+.values {
+	margin          : 0 5px;
+	display         : flex;
+	flex-flow       : row nowrap;
+	justify-content: flex-start;
+}
+
+.values .value {
+	display   : flex;
+	flex-flow : column nowrap;
+	font-size : 14px;
+	margin    : 0 5px;
+}
+
+.value span {
+	font-size   : 18px;
+	font-weight : bold;
 }
