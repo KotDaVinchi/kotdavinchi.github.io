@@ -16,12 +16,9 @@ Function.prototype.log = function (...arg) {
     return this.apply(_someCtx, arg);
 };
 
-const oneDay = 1000 * 60 * 60 * 24;
-const roundDateTemplate = [1, 2, 4, 8, 16, 32].map(x => oneDay * x);
+const roundValueTemplate = [1, 2, 5, 10, 20, 30, 50, 100, 200, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000, 100000, 200000, 300000, 500000, 1000000];
 
 // console.log = ()=>{};
-console.time = ()=>{};
-console.timeEnd = ()=>{};
 
 class Chart {
     constructor(params) {
@@ -43,6 +40,7 @@ class Chart {
             fChart: this.drawFullChart.bind(this),
             ctrl: this.drawControl.bind(this)
         });
+        this.scaleController = new ScaleController(this.graphController, 0.005, ['chart']);
 
         const control = this.DOM.getElementsByClassName('chartsControl')[0];
         this.controlDOM = control;
@@ -63,6 +61,7 @@ class Chart {
         this.chart = {
             width: chart.width,
             height: chart.height,
+            marker: null,
             range: {},
         };
         this.graphController.animatedValueFactory({
@@ -71,7 +70,7 @@ class Chart {
             startValue: Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
                 .slice(1)//remove x axis
                 .map(arr => arr.slice(this.chart.range.left, this.chart.range.right)))),//todo:DRY!
-            speed: roundFn(this.chart.height*0.2),
+            speed: roundFn(this.chart.height * 0.2),
             updFnIds: ['chart']
         });
 
@@ -82,13 +81,15 @@ class Chart {
             height: fullChart.height
         };
 
+
         this.recalcChartVals();
         this.graphController.update();
         control.addEventListener('mousedown', this.mouseActionControl.bind(this), {passive: true});
         control.addEventListener('dblclick', this.mouseActionControl.bind(this), {passive: true});
-        chart.addEventListener('click', () => {
+        chart.addEventListener('click', () => {//todo: remove debug
             this.graphController.update();
         });
+        chart.addEventListener('mousemove', this.mouseActionChart.bind(this), {passive: true});
 
         console.log(this);
     }
@@ -101,33 +102,9 @@ class Chart {
                 Math.ceil((this.control.slide.start + this.control.slide.length) / this.control.width * this.chartData.columns['x'].length) + 1
             )
         };
-        this.chart.maxHeight =  Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
+        this.chart.maxHeight = Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
             .slice(1)//remove x axis
             .map(arr => arr.slice(this.chart.range.left, this.chart.range.right))));
-    }
-
-    makeScaleDivisions(a, b, template) {
-        const diff = (b - a) / 6;
-        const precMap = template
-            .map(x => Math.abs(diff - x));
-        const iMin = precMap.reduce((acc, min, i) => {//todo: can be optimisate coz f(x) has only one minimum and local minimum;
-            if (min < acc.min) {
-                return {i, min}
-            }
-            return acc
-        }, {
-            i: -1,
-            min: Number.MAX_SAFE_INTEGER
-        }).i;
-        const firstLabel = Math.ceil((a + 1) / template[iMin]) * template[iMin];
-        // console.log('diff', diff);
-        // console.log('precMap', precMap);
-        // console.log('iMin', iMin);
-        // console.log('roundDateTemplate[iMin]', template[iMin]);
-        // console.log('firstLabel', firstLabel);
-        // console.log('(b-a)/roundDateTemplate[iMin]', (b - a) / template[iMin]);
-        // console.log('(b-roundDateTemplate[iMin])/roundDateTemplate[iMin]', (b - firstLabel) / template[iMin]);
-        return Array(Math.ceil((b - firstLabel) / template[iMin])).fill(0).map((_, i) => firstLabel + template[iMin] * i);
     }
 
     drawChart() {
@@ -136,30 +113,34 @@ class Chart {
 
         const columns = this.chartData.columns;
         const length = columns['x'].length;
+        const xMult = 1/((columns['x'][length - 1] - columns['x'][0]));
         const xFix = this.control.slide.start / this.control.width;
         const xFixMult = this.chart.width * this.chart.width / (this.control.slide.length);
         const maxXValue = this.chart.maxHeight;
         const yMult = 1 / maxXValue * (this.chart.height - dateScalePaddingPx * 2);
 
 
-        const valueDivisions = this.makeScaleDivisions(0, maxXValue, [1, 2, 5, 10, 20, 30, 50, 100, 200, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000, 100000, 200000, 300000, 500000, 1000000]);//todo add generating
+        // const valueDivisions = this.scaleController.makeScaleDivisions(, roundValueTemplate);//todo add generating
+        const valueDivisions = this.scaleController.getAxisDivisions('y', 0, maxXValue);
         this.chartCtx.lineWidth = 1;
-        this.chartCtx.strokeStyle = '#AAA';
         this.chartCtx.textAlign = 'left';
-        for (let i = 0; i < valueDivisions.length; i++) {
+        for (const division in valueDivisions) {
+            if (!valueDivisions.hasOwnProperty(division)) continue;
+            this.chartCtx.strokeStyle = `rgba(160, 160, 160, ${valueDivisions[division]})`;
+            this.chartCtx.fillStyle = `rgba(160, 160, 160, ${valueDivisions[division]})`;
             this.chartCtx.beginPath();
             this.chartCtx.moveTo(
                 roundFn(0),
-                roundFn(this.chart.height - valueDivisions[i] * yMult - dateScalePaddingPx),
+                roundFn(this.chart.height - division * yMult - dateScalePaddingPx),
             );
             this.chartCtx.lineTo(
                 roundFn(this.chart.width),
-                roundFn(this.chart.height - valueDivisions[i] * yMult - dateScalePaddingPx),
+                roundFn(this.chart.height - division * yMult - dateScalePaddingPx),
             );
             this.chartCtx.stroke();
-            this.chartCtx.fillText(valueDivisions[i].toString(),
+            this.chartCtx.fillText(division.toString(),
                 roundFn(5),
-                this.chart.height - valueDivisions[i] * yMult - dateScalePaddingPx - 5
+                this.chart.height - division * yMult - dateScalePaddingPx - 5
             )
         }
 
@@ -172,24 +153,40 @@ class Chart {
             this.chartCtx.beginPath();
             for (let i = this.chart.range.left; i <= this.chart.range.right; i++) {
                 this.chartCtx.lineTo(
-                    roundFn((((columns['x'][i] - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0])) - xFix) * xFixMult),
+                    roundFn((((columns['x'][i] - columns['x'][0]) * xMult) - xFix) * xFixMult),
                     roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx)
                 );
             }
             this.chartCtx.stroke();
         }
 
+        //draw axis x - date
         const left = this.chart.range.left + 1,
             right = this.chart.range.right - 1;
-
-        const dateDivisions = this.makeScaleDivisions(columns['x'][left], columns['x'][right], roundDateTemplate);
+        const dateDivisions = this.scaleController.getAxisDivisions('x', columns['x'][left], columns['x'][right]);
         this.chartCtx.lineWidth = 1.5;
-        this.chartCtx.strokeStyle = '#888';
+        // this.chartCtx.strokeStyle = '#888';
         this.chartCtx.textAlign = 'center';
-        for (let i = 0; i < dateDivisions.length; i++) {
-            this.chartCtx.fillText(new Date(dateDivisions[i]).toString().slice(4, 10),
-                roundFn(((dateDivisions[i] - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0]) - xFix) * xFixMult),
+        for (const divis in dateDivisions) {
+            if (!dateDivisions.hasOwnProperty(divis)) continue;
+            this.chartCtx.fillStyle = `rgba(128, 128 ,128 ,${dateDivisions[divis]})`;
+            this.chartCtx.fillText(new Date(parseInt(divis)).toString().slice(4, 10),
+                roundFn(((divis - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0]) - xFix) * xFixMult),
                 this.chart.height - dateScalePaddingPx + 8)
+        }
+
+        //marker
+        if (this.chart.marker) {//mb need to move in handler, for stop rerendering
+            const markerColumnIdx = Math.round(this.chart.marker / this.chart.width * (this.chart.range.right-this.chart.range.left)) + this.chart.range.left;
+            const markerX = roundFn((((columns['x'][markerColumnIdx] - columns['x'][0]) * xMult) - xFix) * xFixMult);
+            this.chartCtx.lineWidth = 1;
+            this.chartCtx.strokeStyle = '#000';
+            this.chartCtx.beginPath();
+            this.chartCtx.moveTo(markerX, 0);
+            this.chartCtx.lineTo(markerX, this.chart.height);
+            this.chartCtx.stroke();//and draw circles, just white stroke circles with stroke color
+            console.log(new Date(columns['x'][markerColumnIdx]),...Object.values(columns).slice(1).map(col => col[markerColumnIdx]))
+
         }
 
 
@@ -243,7 +240,7 @@ class Chart {
         if (e.type === 'dblclick') {
             slide.start += slide.length / 4;
             slide.length -= slide.length / 2;
-            this.graphController.update(['chart','ctrl']);
+            this.graphController.update(['chart', 'ctrl']);
             return;
         }
 
@@ -271,7 +268,7 @@ class Chart {
                 }
 
                 this.recalcChartVals();
-                this.graphController.update(['chart','ctrl']);
+                this.graphController.update(['chart', 'ctrl']);
 
                 // this.control.start
             },
@@ -286,20 +283,13 @@ class Chart {
         document.body.addEventListener('mouseleave', stopWatch, {once: true, passive: true});
     }
 
-    hello() {
-        const ampf = 50;
-        const n = 7;
-        for (var i = 0; i < n; i++) {
-            for (var j = 0; j < n; j++) {
-                this.chartCtx.fillStyle = 'rgb(' + Math.floor(255 * (1 - i / n)) + ', ' +
-                    Math.floor(255 * (1 - j / n)) + ', 0)';
-                this.chartCtx.fillRect(j * ampf, i * ampf, ampf, ampf);
-            }
-            const gray = Math.floor(255 * (1 - i / n));
-            this.controlCtx.fillStyle = `rgb(${gray},${gray},${gray})`;
-            this.controlCtx.fillRect(i * ampf, 0, ampf, ampf);
+    mouseActionChart(e) {
+        if (e.type === "mouseleave") {
+            this.chart.marker = null;
+            return;
         }
-        // this.DOM.innerHTML = `Hello ${spec}!`;
+        this.chart.marker = e.clientX - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
+        this.graphController.update(['chart']);
     }
 }
 

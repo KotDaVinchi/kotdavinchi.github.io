@@ -6,6 +6,10 @@ class GraphController {
         this.callbacks = [];
     }
 
+    get inProgress(){
+        return !!this.drawPending.length
+    }
+
     update(updatedNames = Object.keys(this.updateFunctions), cb) {
         if (this.drawPending.length) {
             this.drawPending = this.drawPending.concat(updatedNames);
@@ -26,7 +30,7 @@ class GraphController {
         });
     }
 
-    animatedValueFactory({ctx, name, startValue, speed, updFnIds}) {
+    animatedValueFactory({ctx, name, startValue, speed, updFnIds, onEndAnimacion}) {
         let currValue = startValue,
             needValue = startValue,
             inWork = false,
@@ -42,7 +46,7 @@ class GraphController {
             const delta = Math.sign(needValue - currValue) * changeTime * speed;
             if (Math.abs(delta) > Math.abs(needValue - currValue) || delta === 0) {
                 currValue = needValue;
-                this.update(updFnIds);
+                this.update(updFnIds, onEndAnimacion);
                 inWork = false;
                 return;
             }
@@ -59,7 +63,8 @@ class GraphController {
                 inWork = true;
                 lastTime = 0;
                 this.update(updFnIds, updFn)
-            }
+            },
+            enumerable: true
         })
     }
 }
