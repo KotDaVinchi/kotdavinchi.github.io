@@ -1,62 +1,123 @@
 html, body {
-	padding : 0;
-	margin  : 0;
+    padding: 0;
+    margin: 0;
+    font-family: sans-serif;
+}
+
+#charts {
+    display: flex;
+    flex-flow: row wrap;
+}
+
+#charts > * {
+    flex-shrink: 0;
+    flex-grow: 0;
 }
 
 .chart {
-	display         : flex;
-	flex-flow       : column nowrap;
-	justify-content : center;
-	align-items     : flex-start;
-	margin          : 10px;
-	position        : relative;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    margin: 10px;
+    position: relative;
+}
+
+.chart .board {
+    margin-bottom: 20px
+}
+
+.chart .control {
+    position: relative;
 }
 
 .chart canvas {
-	/*flex: 0 0 250px;*/
-	margin-bottom : 20px;
-	border        : solid gray 1px;
+    border: solid gray 1px;
 }
 
 .chart .fullChart {
-	position : absolute;
-	bottom   : 0;
-	z-index  : -1;
+    position: absolute;
+    z-index: -1;
 }
 
-div#info {
-	position      : absolute;
-	display       : flex;
-	flex-flow     : column nowrap;
-	border        : 1px solid lightgray;
-	background: white;
-	border-radius : 5px;
-	padding       : 5px 0px;
-	font-family   : sans-serif;
-	pointer-events: none;
-	min-width: 110px;
+.chart .lines {
+    display: flex;
+    flex-flow: row wrap;
+    margin: 10px 0;
 }
 
-div#info .date {
-	margin    : 0px 10px 10px;
-	font-size : 16px;
+.lines label{
+    padding: 5px;
+    padding-right: 10px;
+    margin-right: 15px;
+    border: 1px solid lightgray;
+    border-radius: 9999px;
+    line-height: 20px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.lines .icon{
+    display: inline-block;
+    width: 11px;
+    /* height: 11px; */
+    padding: 0px 5px;
+    margin-right: 10px;
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 100%;
+    transition: border-width 0.5s linear;
+    box-shadow: inset 0 0 0 10px white;
+}
+
+.lines .icon:before{
+    content: '\2713';
+    color: white;
+}
+
+.lines input[type=checkbox]:checked + .icon {
+    box-shadow: none;
+}
+
+.lines input[type=checkbox]{
+    position: absolute;
+    z-index: -1000;
+    left: -1000px;
+    overflow: hidden;
+}
+
+#info {
+    position: absolute;
+    display: flex;
+    flex-flow: column nowrap;
+    border: 1px solid lightgray;
+    background: white;
+    border-radius: 5px;
+    padding: 5px 0px;
+    pointer-events: none;
+    min-width: 110px;
+}
+
+#info .date {
+    margin: 0px 10px 10px;
+    font-size: 16px;
 }
 
 .values {
-	margin          : 0 5px;
-	display         : flex;
-	flex-flow       : row nowrap;
-	justify-content: flex-start;
+    margin: 0 5px;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: flex-start;
 }
 
 .values .value {
-	display   : flex;
-	flex-flow : column nowrap;
-	font-size : 14px;
-	margin    : 0 5px;
+    display: flex;
+    flex-flow: column nowrap;
+    font-size: 14px;
+    margin: 0 5px;
 }
 
 .value span {
-	font-size   : 18px;
-	font-weight : bold;
+    font-size: 18px;
+    font-weight: bold;
 }

@@ -26,28 +26,46 @@ class Chart {
             acc[elem[0]] = elem.slice(1);
             return acc;
         }, {});
-        this.chartData.maxs = {};
-        Object.keys(this.chartData.colors).forEach(name => {
-            this.chartData.maxs[name] = Math.max.apply(null, this.chartData.columns[name]);//todo:old, to delete
-        });
-        this.chartData.max = Math.max.apply(null, Object.values(this.chartData.maxs));
-
-        //todo: creating canvas end controls
-        this.DOM.className += ' chart';
-        const width = params.fitsContainer ? this.DOM.width : params.width;
-        this.DOM.innerHTML = `<canvas class="board" width="${width}" height="${width}"/>
-        <canvas class="fullChart" width="${width}" height="${width / 8}"/>
-        <canvas class="chartsControl" width="${width}" height="${width / 8}"/>`;
-
-        document.body.insertAdjacentHTML(
-            'beforeend',
-            `<div id="info" style="display:none"><div class="date"/><div class="values"/></div>`);
 
         this.graphController = new GraphController({
             chart: this.drawChart.bind(this),
             fChart: this.drawFullChart.bind(this),
             ctrl: this.drawControl.bind(this)
         });
+        this.chartData.enabled = Object.keys(this.chartData.names).reduce((acc,name)=>{acc[name] = true; return acc},{});
+
+        this.chartData.currentOpacity = {};
+        for (let name in this.chartData.names) {
+            if (!this.chartData.names.hasOwnProperty(name)) continue;
+            this.graphController.animatedValueFactory({
+                ctx: this.chartData.currentOpacity,
+                name: name,
+                startValue: 1,
+                speed: 0.01,
+                updFnIds: ['fChart', 'chart'],
+                // onEndAnimacion: () => {
+                //     //todo: need clear memory
+                //     //if (axis.colorMap[division] === 0) delete axis.colorMap[division]
+                // }
+            })
+        }
+
+        this.chartData.maxs = {};
+        Object.keys(this.chartData.colors).forEach(name => {
+            this.chartData.maxs[name] = Math.max.apply(null, this.chartData.columns[name]);//todo:old, to delete
+        });
+        this.chartData.max = Math.max.apply(null, Object.values(this.chartData.maxs));
+
+        this.DOM.className += ' chart';
+        const width = params.fitsContainer ? this.DOM.width : params.width;
+        this.DOM.innerHTML = `<canvas class="board" width="${width}" height="${width}"></canvas>
+        <div class="control"><canvas class="fullChart" width="${width}" height="${width / 8}"/></canvas>
+        <canvas class="chartsControl" width="${width}" height="${width / 8}"/></canvas></div>`;
+
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            `<div id="info" style="display:none"><div class="date"></div><div class="values"></div></div>`);
+
         this.scaleController = new ScaleController(this.graphController, 0.005, ['chart']);
 
         const control = this.DOM.getElementsByClassName('chartsControl')[0];
@@ -79,6 +97,13 @@ class Chart {
                 .slice(1)//remove x axis
                 .map(arr => arr.slice(this.chart.range.left, this.chart.range.right)))),//todo:DRY!
             speed: roundFn(this.chartData.max * 0.001),
+            updFnIds: ['fChart']
+        });
+        this.graphController.animatedValueFactory({
+            ctx: this.chart,
+            name: 'currentMaxHeight',
+            startValue: this.chart.maxHeight,
+            speed: roundFn(this.chartData.max * 0.001),
             updFnIds: ['chart']
         });
 
@@ -96,19 +121,30 @@ class Chart {
         };
 
 
-        // this.lines = document.createElement('div');
-        // this.lines.className = 'lines';
-        // this.DOM.insertAdjacentElement('afterBegin', Object.keys(this.chartData.names)
-        //                                                    .map(name => {
-        //                                                        const input = document.createElement('input');
-        //                                                        input.type = 'checkbox';
-        //                                                        input.name = name;
-        //                                                        input.checked = true;
-        //                                                        input.addEventListener('onclick', this.onChooseLine.bind(this))
-        //                                                        return input;
-        //                                                    }).reduce((lines, input)=>{
-        //                                                        lines.appendChild(input)
-        // },this.lines));
+        this.lines = document.createElement('div');
+        this.lines.className = 'lines';
+        this.DOM.insertAdjacentElement('beforeend', Object.keys(this.chartData.names)
+            .map(name => {
+                const label = document.createElement('label');
+                label.style.color = this.chartData.colors[name];
+                // label.addEventListener('click', this.onChooseLine.bind(this));
+                const input = document.createElement('input');
+                const icon = document.createElement('div');
+                icon.className = 'icon';
+                icon.style.backgroundColor = this.chartData.colors[name];
+                input.type = 'checkbox';
+                input.name = name;
+                input.checked = true;
+                input.style.borderColor = this.chartData.colors[name];
+                input.addEventListener('click', this.onChooseLine.bind(this));
+                label.appendChild(input);
+                label.appendChild(icon);
+                label.appendChild(document.createTextNode(this.chartData.names[name]));
+                return label;
+            }).reduce((lines, input) => {
+                lines.appendChild(input);
+                return lines;
+            }, this.lines));
 
 
         this.recalcChartVals();
@@ -125,15 +161,26 @@ class Chart {
     }
 
     recalcChartVals() {
+        const xColumn = this.chartData.columns['x'];
+        this.chart.window = {
+            xStart: (this.control.slide.start / this.control.width) * (xColumn[xColumn.length - 1] - xColumn[0]) + xColumn[0],
+            xEnd: ((this.control.slide.start + this.control.slide.length) / this.control.width) * (xColumn[xColumn.length - 1] - xColumn[0]) + xColumn[0]
+        };
         this.chart.range = {
-            left: Math.max(0, Math.floor(this.control.slide.start / this.control.width * this.chartData.columns['x'].length) - 1),
+            // left: Math.max(0, Math.floor(this.control.slide.start / this.control.width * this.chartData.xColumn.length)),
+            left: Math.max(
+                0,
+                Math.floor((this.chart.window.xStart - xColumn[0]) / (xColumn[xColumn.length - 1] - xColumn[0]) * (xColumn.length - 1))
+            ),
             right: Math.min(
-                this.chartData.columns['x'].length - 1,
-                Math.ceil((this.control.slide.start + this.control.slide.length) / this.control.width * this.chartData.columns['x'].length) + 1
+                xColumn.length - 1,
+                Math.ceil((this.chart.window.xEnd - xColumn[0]) / (xColumn[xColumn.length - 1] - xColumn[0]) * (xColumn.length - 1))
             )
         };
-        this.chart.maxHeight = Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
-            .slice(1)//remove x axis
+        const enabledNames = Object.keys(this.chartData.enabled).filter(name => this.chartData.enabled[name]);
+        const valuesOfEnabledNames = enabledNames.map(name => this.chartData.columns[name]);
+        this.chart.maxHeight = Math.max.apply(null, [].concat.call(...valuesOfEnabledNames));
+        this.chart.currentMaxHeight = Math.max.apply(null, [].concat.call(...valuesOfEnabledNames
             .map(arr => arr.slice(this.chart.range.left, this.chart.range.right))));
     }
 
@@ -143,10 +190,10 @@ class Chart {
 
         const columns = this.chartData.columns;
         const length = columns['x'].length;
-        const xMult = 1 / ((columns['x'][length - 1] - columns['x'][0]));
-        const xFix = this.control.slide.start / this.control.width;
-        const xFixMult = this.chart.width * this.chart.width / (this.control.slide.length);
-        const maxXValue = this.chart.maxHeight;
+        const xStart = (this.control.slide.start / this.control.width) * (columns['x'][length - 1] - columns['x'][0]) + columns['x'][0];
+        const xEnd = ((this.control.slide.start + this.control.slide.length) / this.control.width) * (columns['x'][length - 1] - columns['x'][0]) + columns['x'][0];
+        const xMult = this.chart.width / (xEnd - xStart);
+        const maxXValue = this.chart.currentMaxHeight;
         const yMult = 1 / maxXValue * (this.chart.height - dateScalePaddingPx * 2);
 
 
@@ -177,19 +224,23 @@ class Chart {
 
         //lines
         this.chartCtx.lineWidth = 1.5;
-        for (let lineName in this.chartData.colors) {
-            if (!this.chartData.colors.hasOwnProperty(lineName)) continue;
+        const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name]!==0);
+        for (let lineName of enabledNames) {
+            // if (!this.chartData.colors.hasOwnProperty(lineName)) continue;
             this.chartCtx.strokeStyle = this.chartData.colors[lineName];
+            this.chartCtx.globalAlpha = this.chartData.currentOpacity[lineName];
             this.chartCtx.beginPath();
             for (let i = this.chart.range.left; i <= this.chart.range.right; i++) {
                 //skip points don has effect on test dataset
                 this.chartCtx.lineTo(
-                    roundFn((((columns['x'][i] - columns['x'][0]) * xMult) - xFix) * xFixMult),
+                    //roundFn((((columns['x'][i] - columns['x'][0]) * xMult) - xFix) * xFixMult),
+                    roundFn((columns['x'][i] - xStart) * xMult),
                     roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx)
                 );
             }
             this.chartCtx.stroke();
         }
+        this.chartCtx.globalAlpha = 1;
 
         //draw axis x - date
         const left = this.chart.range.left + 1,
@@ -202,13 +253,14 @@ class Chart {
             if (!dateDivisions.hasOwnProperty(divis)) continue;
             this.chartCtx.fillStyle = `rgba(128, 128 ,128 ,${dateDivisions[divis]})`;
             this.chartCtx.fillText(new Date(parseInt(divis)).toString().slice(4, 10),
-                roundFn(((divis - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0]) - xFix) * xFixMult),
+                // roundFn(((divis - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0]) - xFix) * xFixMult),
+                roundFn((divis - xStart) * xMult),
                 this.chart.height - dateScalePaddingPx + 8);
         }
 
         //marker
-        if (this.chart.marker) {//mb need to move in handler, for stop rerendering
-            const markerX = roundFn((((columns['x'][this.chart.marker] - columns['x'][0]) * xMult) - xFix) * xFixMult);
+        if (this.chart.marker) {
+            const markerX = roundFn((columns['x'][this.chart.marker] - xStart) * xMult);
             this.chartCtx.lineWidth = 1;
             this.chartCtx.strokeStyle = '#000';
             this.chartCtx.beginPath();
@@ -229,13 +281,14 @@ class Chart {
         const columns = this.chartData.columns;
         const length = columns['x'].length;
         const xMult = 1 / (columns['x'][length - 1] - columns['x'][0]) * this.fullChart.width;
-        const yMult = 1 / Math.max.apply(null, Object.values(this.chartData.maxs)) * this.fullChart.height;
+        const yMult = 1 / this.chart.maxHeight * this.fullChart.height;
 
         //lines
+        const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name]!==0);
         this.fullChartCtx.lineWidth = 1.5;
-        for (let lineName in this.chartData.colors) {
-            if (!this.chartData.colors.hasOwnProperty(lineName)) continue;
+        for (let lineName of enabledNames) {
             this.fullChartCtx.strokeStyle = this.chartData.colors[lineName];
+            this.fullChartCtx.globalAlpha = this.chartData.currentOpacity[lineName];
             this.fullChartCtx.beginPath();
             for (let i = 0; i < length; i++) {
                 this.fullChartCtx.lineTo(
@@ -245,6 +298,7 @@ class Chart {
             }
             this.fullChartCtx.stroke();
         }
+        this.fullChartCtx.globalAlpha = 1;
     }
 
     drawControl() {
@@ -274,13 +328,13 @@ class Chart {
             return;
         }
 
-        const offsetXfromControl = e.clientX - this.controlDOM.offsetLeft - this.DOM.offsetLeft - slide.start;
+        const offsetXfromControl = e.pageX - this.controlDOM.offsetLeft - this.DOM.offsetLeft - slide.start;
         const targetType = offsetXfromControl > 0 && offsetXfromControl < slide.panelLength ? 'leftPanel' :
             offsetXfromControl < slide.length && offsetXfromControl > slide.length - slide.panelLength ? 'rightPanel' :
                 null;
 
         const changeControlAction = (e) => {
-                const controlOffsetX = e.clientX - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
+                const controlOffsetX = e.pageX - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
                 if (targetType === 'leftPanel') {
                     const possibleStart = roundFn(controlOffsetX - slide.panelLength / 2);
                     const newStart = Math.max(0, Math.min(slide.start + slide.length - slide.panelLength * 2, possibleStart));
@@ -327,21 +381,18 @@ class Chart {
                 }).join('');
         }
         // console.log(e.type);
-        // console.log(e.clientX, e.clientY);
+        // console.log(e.pageX, e.pageY);
         // console.log(this.controlDOM.offsetLeft, this.DOM.offsetLeft);
         // console.log(this.DOM.offsetTop, this.infoDOM.clientHeight);
 
 
         const oldMarker = this.chart.marker;
         this.chart.marker = Math.round(
-            (e.clientX - this.chartDOM.offsetLeft - this.DOM.offsetLeft)
-            /
-            this.chart.width * (this.chart.range.right - this.chart.range.left))
-            + this.chart.range.left;
+            (e.pageX / this.chart.width * this.control.slide.length + this.control.slide.start) / this.control.width
+            *
+            (this.chartData.columns['x'].length - 1));
 
-        this.infoDOM.style = `left: ${Math.round(e.clientX - this.chartDOM.offsetLeft - this.DOM.offsetLeft)}px; top: ${Math.round(e.clientY
-            - this.DOM.offsetTop
-            - this.infoDOM.clientHeight)}px`;
+        this.infoDOM.style = `left: ${Math.round(e.pageX + 10)}px; top: ${Math.round(e.pageY - 10 - this.infoDOM.clientHeight)}px`;
         this.info.date.innerText = new Date(this.chartData.columns['x'][this.chart.marker]).toString().slice(0, 10);
         this.info.values.querySelectorAll('.values span').forEach(valueNode => {
             valueNode.innerText = this.chartData.columns[valueNode.dataset.name][this.chart.marker];
@@ -353,7 +404,15 @@ class Chart {
     }
 
     onChooseLine(e) {
-
+        if(Object.values(this.chartData.enabled).filter(en => en).length <= 1 && !e.target.checked){
+            //not on my shift
+            e.preventDefault();
+            return;
+        }
+        this.chartData.enabled[e.target.name] = e.target.checked;
+        this.chartData.currentOpacity[e.target.name] = e.target.checked ? 1 : 0;
+        this.recalcChartVals();
+        this.graphController.update(['fChart', 'chart']);
     }
 }
 
