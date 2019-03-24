@@ -27,15 +27,19 @@ class ScaleController {
         const diff = (b - a) / 6;
         const precMap = template
             .map(x => Math.abs(diff - x));
-        const iMin = precMap.reduce((acc, min, i) => {//todo: can be optimisate coz f(x) has only one minimum and local minimum;
-            if (min < acc.min) {
-                return {i, min}
-            }
-            return acc
-        }, {
+        let minValue = {
             i: -1,
             min: Number.MAX_SAFE_INTEGER
-        }).i;
+        };
+        for (let i = 0; i < precMap.length; i++) {
+            if( precMap[i] < minValue.min ){
+                minValue = {i, min: precMap[i] }
+            } else {
+                break;
+            }
+        }
+        const iMin = minValue.i;
+
         const firstLabel = Math.ceil((a + 1) / template[iMin]) * template[iMin];
         // console.log('diff', diff);
         // console.log('precMap', precMap);
