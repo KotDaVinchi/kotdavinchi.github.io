@@ -40,7 +40,7 @@ class ScaleController {
         }
         const iMin = minValue.i;
 
-        const firstLabel = Math.ceil((a + 1) / template[iMin]) * template[iMin];
+        const firstLabel = Math.ceil((a) / template[iMin]) * template[iMin];
         // console.log('diff', diff);
         // console.log('precMap', precMap);
         // console.log('iMin', iMin);

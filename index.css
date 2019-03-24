@@ -2,6 +2,23 @@ html, body {
     padding: 0;
     margin: 0;
     font-family: sans-serif;
+    color: black;
+    background: white;
+}
+
+body.night{
+    background: black;
+    color: white;
+}
+
+#switchTheme {
+    display: inline-block;
+    cursor: pointer;
+    margin: 10px;
+    padding: 5px;
+    color: lightblue;
+    border: 1px solid lightgray;
+    border-radius: 9999px;
 }
 
 #charts {
@@ -32,7 +49,7 @@ html, body {
 }
 
 .chart canvas {
-    border: solid gray 1px;
+    border: solid lightgray 1px;
 }
 
 .chart .fullChart {
@@ -91,7 +108,7 @@ html, body {
     display: flex;
     flex-flow: column nowrap;
     border: 1px solid lightgray;
-    background: white;
+    background: inherit;
     border-radius: 5px;
     padding: 5px 0px;
     pointer-events: none;

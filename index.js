@@ -126,11 +126,11 @@ class Chart {
         this.DOM.insertAdjacentElement('beforeend', Object.keys(this.chartData.names)
             .map(name => {
                 const label = document.createElement('label');
-                label.style.color = this.chartData.colors[name];
                 // label.addEventListener('click', this.onChooseLine.bind(this));
                 const input = document.createElement('input');
                 const icon = document.createElement('div');
                 icon.className = 'icon';
+                icon.style.borderColor = this.chartData.colors[name];
                 icon.style.backgroundColor = this.chartData.colors[name];
                 input.type = 'checkbox';
                 input.name = name;
@@ -203,21 +203,21 @@ class Chart {
         this.chartCtx.textAlign = 'left';
         for (const division in valueDivisions) {
             if (!valueDivisions.hasOwnProperty(division)) continue;
-            this.chartCtx.strokeStyle = `rgba(160, 160, 160, ${valueDivisions[division]})`;
-            this.chartCtx.fillStyle = `rgba(160, 160, 160, ${valueDivisions[division]})`;
+            this.chartCtx.strokeStyle = `rgba(180, 180, 180, ${valueDivisions[division]})`;
+            this.chartCtx.fillStyle = `rgba(180, 180, 180, ${valueDivisions[division]})`;
             this.chartCtx.beginPath();
             this.chartCtx.moveTo(
-                roundFn(0),
-                roundFn(this.chart.height - division * yMult - dateScalePaddingPx),
+                roundFn(dateScalePaddingPx/2),
+                roundFn(this.chart.height - division * yMult - dateScalePaddingPx*2),
             );
             this.chartCtx.lineTo(
                 roundFn(this.chart.width),
-                roundFn(this.chart.height - division * yMult - dateScalePaddingPx),
+                roundFn(this.chart.height - division * yMult - dateScalePaddingPx*2),
             );
             this.chartCtx.stroke();
             this.chartCtx.fillText(division.toString(),
-                roundFn(5),
-                this.chart.height - division * yMult - dateScalePaddingPx - 5
+                roundFn(dateScalePaddingPx/2),
+                this.chart.height - division * yMult - dateScalePaddingPx*2 - 5
             );
         }
 
@@ -235,7 +235,7 @@ class Chart {
                 this.chartCtx.lineTo(
                     //roundFn((((columns['x'][i] - columns['x'][0]) * xMult) - xFix) * xFixMult),
                     roundFn((columns['x'][i] - xStart) * xMult),
-                    roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx)
+                    roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx*2)
                 );
             }
             this.chartCtx.stroke();
@@ -243,15 +243,15 @@ class Chart {
         this.chartCtx.globalAlpha = 1;
 
         //draw axis x - date
-        const left = this.chart.range.left + 1,
-            right = this.chart.range.right - 1;
-        const dateDivisions = this.scaleController.getAxisDivisions('x', columns['x'][left], columns['x'][right]);
+        const left = this.chart.window.xStart,
+            right = this.chart.window.xEnd;
+        const dateDivisions = this.scaleController.getAxisDivisions('x', left, right);
         this.chartCtx.lineWidth = 1.5;
         // this.chartCtx.strokeStyle = '#888';
         this.chartCtx.textAlign = 'center';
         for (const divis in dateDivisions) {
             if (!dateDivisions.hasOwnProperty(divis)) continue;
-            this.chartCtx.fillStyle = `rgba(128, 128 ,128 ,${dateDivisions[divis]})`;
+            this.chartCtx.fillStyle = `rgba(180, 180 ,180 ,${dateDivisions[divis]})`;
             this.chartCtx.fillText(new Date(parseInt(divis)).toString().slice(4, 10),
                 // roundFn(((divis - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0]) - xFix) * xFixMult),
                 roundFn((divis - xStart) * xMult),
@@ -262,12 +262,28 @@ class Chart {
         if (this.chart.marker) {
             const markerX = roundFn((columns['x'][this.chart.marker] - xStart) * xMult);
             this.chartCtx.lineWidth = 1;
-            this.chartCtx.strokeStyle = '#000';
+            this.chartCtx.strokeStyle = 'rgb(180, 180 ,180)';
             this.chartCtx.beginPath();
             this.chartCtx.moveTo(markerX, 0);
             this.chartCtx.lineTo(markerX, this.chart.height);
             this.chartCtx.stroke();//and draw circles, just white stroke circles with stroke color
-            console.log(new Date(columns['x'][this.chart.marker]), ...Object.values(columns).slice(1).map(col => col[this.chart.marker]));
+            for (let lineName of enabledNames) {
+                this.chartCtx.strokeStyle = this.chartData.colors[lineName];
+                this.chartCtx.fillStyle = document.body.classList.contains('night') ? 'black' : 'white';
+                // this.chartCtx.fillStyle = 'transparent';
+                this.chartCtx.beginPath();
+                this.chartCtx.arc(
+                    markerX,
+                    this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx*2,
+                    5,0,Math.PI*2,true);
+                this.chartCtx.fill();//and draw circles, just white stroke circles with stroke color
+                this.chartCtx.beginPath();
+                this.chartCtx.arc(
+                    markerX,
+                    this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx*2,
+                    5,0,Math.PI*2,true);
+                this.chartCtx.stroke();//and draw circles, just white stroke circles with stroke color
+            }
 
         }
 
@@ -424,3 +440,7 @@ fetch("chart_data.json")
             new Chart({DOM: chartsDOM.appendChild(document.createElement('div')), chartData: chart, width: 400})
         }
     });
+
+document.getElementById('switchTheme').addEventListener('click',()=>{
+    document.body.classList.toggle('night');
+})
