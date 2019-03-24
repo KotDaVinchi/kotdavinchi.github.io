@@ -3,21 +3,6 @@ const slideLengthRate = 0.2;
 const slidePanelLength = 0.02;
 const dateScalePaddingPx = 15;
 
-let _someCtx = null;
-Object.prototype.svCtx = function () {
-    _someCtx = this;
-    return this;
-};
-
-Function.prototype.log = function (...arg) {
-    console.log(...arg);
-    return this.apply(_someCtx, arg);
-};
-
-// console.log = ()=>{};
-// console.time = ()=>{};
-// console.timeEnd = ()=>{};
-
 class Chart {
     constructor(params) {
         this.DOM = params.DOM;
@@ -42,17 +27,13 @@ class Chart {
                 name: name,
                 startValue: 1,
                 speed: 0.01,
-                updFnIds: ['fChart', 'chart'],
-                // onEndAnimacion: () => {
-                //     //todo: need clear memory
-                //     //if (axis.colorMap[division] === 0) delete axis.colorMap[division]
-                // }
+                updFnIds: ['fChart', 'chart']
             })
         }
 
         this.chartData.maxs = {};
         Object.keys(this.chartData.colors).forEach(name => {
-            this.chartData.maxs[name] = Math.max.apply(null, this.chartData.columns[name]);//todo:old, to delete
+            this.chartData.maxs[name] = Math.max.apply(null, this.chartData.columns[name]);
         });
         this.chartData.max = Math.max.apply(null, Object.values(this.chartData.maxs));
 
@@ -62,9 +43,11 @@ class Chart {
         <div class="control"><canvas class="fullChart" width="${width}" height="${width / 8}"/></canvas>
         <canvas class="chartsControl" width="${width}" height="${width / 8}"/></canvas></div>`;
 
-        document.body.insertAdjacentHTML(
-            'beforeend',
-            `<div id="info" style="display:none"><div class="date"></div><div class="values"></div></div>`);
+        if(!document.getElementById('info')){
+            document.body.insertAdjacentHTML(
+                'beforeend',
+                `<div id="info" style="display:none"><div class="date"></div><div class="values"></div></div>`);
+        }
 
         this.scaleController = new ScaleController(this.graphController, 0.005, ['chart']);
 
@@ -95,7 +78,7 @@ class Chart {
             name: 'maxHeight',
             startValue: Math.max.apply(null, [].concat.call(...Object.values(this.chartData.columns)
                 .slice(1)//remove x axis
-                .map(arr => arr.slice(this.chart.range.left, this.chart.range.right)))),//todo:DRY!
+                .map(arr => arr.slice(this.chart.range.left, this.chart.range.right)))),
             speed: roundFn(this.chartData.max * 0.001),
             updFnIds: ['fChart']
         });
@@ -126,7 +109,6 @@ class Chart {
         this.DOM.insertAdjacentElement('beforeend', Object.keys(this.chartData.names)
             .map(name => {
                 const label = document.createElement('label');
-                // label.addEventListener('click', this.onChooseLine.bind(this));
                 const input = document.createElement('input');
                 const icon = document.createElement('div');
                 icon.className = 'icon';
@@ -151,9 +133,6 @@ class Chart {
         this.graphController.update();
         control.addEventListener('mousedown', this.mouseActionControl.bind(this), {passive: true});
         control.addEventListener('dblclick', this.mouseActionControl.bind(this), {passive: true});
-        chart.addEventListener('click', () => {//todo: remove debug
-            this.graphController.update();
-        });
         chart.addEventListener('mousemove', this.mouseActionChart.bind(this), {passive: true});
         chart.addEventListener('mouseleave', this.mouseActionChart.bind(this), {passive: true});
 
@@ -167,7 +146,6 @@ class Chart {
             xEnd: ((this.control.slide.start + this.control.slide.length) / this.control.width) * (xColumn[xColumn.length - 1] - xColumn[0]) + xColumn[0]
         };
         this.chart.range = {
-            // left: Math.max(0, Math.floor(this.control.slide.start / this.control.width * this.chartData.xColumn.length)),
             left: Math.max(
                 0,
                 Math.floor((this.chart.window.xStart - xColumn[0]) / (xColumn[xColumn.length - 1] - xColumn[0]) * (xColumn.length - 1))
@@ -197,7 +175,6 @@ class Chart {
         const yMult = 1 / maxXValue * (this.chart.height - dateScalePaddingPx * 2);
 
 
-        // const valueDivisions = this.scaleController.makeScaleDivisions(, roundValueTemplate);//todo add generating
         const valueDivisions = this.scaleController.getAxisDivisions('y', 0, maxXValue);
         this.chartCtx.lineWidth = 1;
         this.chartCtx.textAlign = 'left';
@@ -226,14 +203,12 @@ class Chart {
         this.chartCtx.lineWidth = 1.5;
         const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name]!==0);
         for (let lineName of enabledNames) {
-            // if (!this.chartData.colors.hasOwnProperty(lineName)) continue;
             this.chartCtx.strokeStyle = this.chartData.colors[lineName];
             this.chartCtx.globalAlpha = this.chartData.currentOpacity[lineName];
             this.chartCtx.beginPath();
             for (let i = this.chart.range.left; i <= this.chart.range.right; i++) {
                 //skip points don has effect on test dataset
                 this.chartCtx.lineTo(
-                    //roundFn((((columns['x'][i] - columns['x'][0]) * xMult) - xFix) * xFixMult),
                     roundFn((columns['x'][i] - xStart) * xMult),
                     roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx*2)
                 );
@@ -247,13 +222,11 @@ class Chart {
             right = this.chart.window.xEnd;
         const dateDivisions = this.scaleController.getAxisDivisions('x', left, right);
         this.chartCtx.lineWidth = 1.5;
-        // this.chartCtx.strokeStyle = '#888';
         this.chartCtx.textAlign = 'center';
         for (const divis in dateDivisions) {
             if (!dateDivisions.hasOwnProperty(divis)) continue;
             this.chartCtx.fillStyle = `rgba(180, 180 ,180 ,${dateDivisions[divis]})`;
             this.chartCtx.fillText(new Date(parseInt(divis)).toString().slice(4, 10),
-                // roundFn(((divis - columns['x'][0]) / (columns['x'][length - 1] - columns['x'][0]) - xFix) * xFixMult),
                 roundFn((divis - xStart) * xMult),
                 this.chart.height - dateScalePaddingPx + 8);
         }
@@ -266,23 +239,22 @@ class Chart {
             this.chartCtx.beginPath();
             this.chartCtx.moveTo(markerX, 0);
             this.chartCtx.lineTo(markerX, this.chart.height);
-            this.chartCtx.stroke();//and draw circles, just white stroke circles with stroke color
+            this.chartCtx.stroke();
             for (let lineName of enabledNames) {
                 this.chartCtx.strokeStyle = this.chartData.colors[lineName];
                 this.chartCtx.fillStyle = document.body.classList.contains('night') ? 'black' : 'white';
-                // this.chartCtx.fillStyle = 'transparent';
                 this.chartCtx.beginPath();
                 this.chartCtx.arc(
                     markerX,
                     this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx*2,
                     5,0,Math.PI*2,true);
-                this.chartCtx.fill();//and draw circles, just white stroke circles with stroke color
+                this.chartCtx.fill();
                 this.chartCtx.beginPath();
                 this.chartCtx.arc(
                     markerX,
                     this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx*2,
                     5,0,Math.PI*2,true);
-                this.chartCtx.stroke();//and draw circles, just white stroke circles with stroke color
+                this.chartCtx.stroke();
             }
 
         }
@@ -369,8 +341,6 @@ class Chart {
 
                 this.recalcChartVals();
                 this.graphController.update(['chart', 'ctrl']);
-
-                // this.control.start
             },
             stopWatch = (e) => {
                 document.body.removeEventListener('mousemove', changeControlAction);
@@ -396,10 +366,6 @@ class Chart {
                     return `<div class="value" style="color: ${this.chartData.colors[lineName]}"><span data-name="${lineName}">42</span>${this.chartData.names[lineName]}</div>`;
                 }).join('');
         }
-        // console.log(e.type);
-        // console.log(e.pageX, e.pageY);
-        // console.log(this.controlDOM.offsetLeft, this.DOM.offsetLeft);
-        // console.log(this.DOM.offsetTop, this.infoDOM.clientHeight);
 
 
         const oldMarker = this.chart.marker;

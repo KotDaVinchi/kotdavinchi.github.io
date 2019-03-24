@@ -41,13 +41,6 @@ class ScaleController {
         const iMin = minValue.i;
 
         const firstLabel = Math.ceil((a) / template[iMin]) * template[iMin];
-        // console.log('diff', diff);
-        // console.log('precMap', precMap);
-        // console.log('iMin', iMin);
-        // console.log('roundDateTemplate[iMin]', template[iMin]);
-        // console.log('firstLabel', firstLabel);
-        // console.log('(b-a)/roundDateTemplate[iMin]', (b - a) / template[iMin]);
-        // console.log('(b-roundDateTemplate[iMin])/roundDateTemplate[iMin]', (b - firstLabel) / template[iMin]);
         return Array(Math.ceil((b - firstLabel) / template[iMin])).fill(0).map((_, i) => firstLabel + template[iMin] * i);
     }
 
@@ -62,18 +55,13 @@ class ScaleController {
                 axis.colorMap[division] = 0;
             }
             if (inNew && !inPrev) {
-                //axis.colorMap[division]
                 if (!(division in axis.colorMap)) {
                     this.graphController.animatedValueFactory({
                         ctx: axis.colorMap,
                         name: division,
                         startValue: 0,
                         speed: this.speed,
-                        updFnIds: this.updatedFunction,
-                        // onEndAnimacion: () => {
-                        //     //todo: need clear memory
-                        //     //if (axis.colorMap[division] === 0) delete axis.colorMap[division]
-                        // }
+                        updFnIds: this.updatedFunction
                     })
                 }
                 axis.colorMap[division] = 1;
