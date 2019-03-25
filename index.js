@@ -41,8 +41,10 @@ class Chart {
         });
         this.chartData.max = Math.max.apply(null, Object.values(this.chartData.maxs));
 
-        this.DOM.className += ' chart';
-        const width = (params.fitsContainer ? this.DOM.clientWidth : params.width);
+        this.DOM.className += 'chart';
+        const styles = getComputedStyle(this.DOM);
+        let width = (params.fitsContainer ? this.DOM.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight) : params.width);
+        if(params.maxWidth) width = Math.min(width, params.maxWidth);
         const trueWidth = width * this.dpx;
         this.DOM.innerHTML = `<canvas class="board" width="${trueWidth}" height="${trueWidth}" style="width:${width}px;height: ${width}px"></canvas>
         <div class="control"><canvas class="fullChart" width="${trueWidth}" height="${trueWidth / 8}" style="width:${width}px;height: ${width / 8}px"/></canvas>
@@ -385,7 +387,7 @@ class Chart {
         if (this.infoDOM.style.display === 'none') {
             this.info.values.innerHTML = Object.keys(this.chartData.colors)
                 .map(lineName => {
-                    return `<div class="value" style="color: ${this.chartData.colors[lineName]}"><span data-name="${lineName}">42</span>${this.chartData.names[lineName]}</div>`;
+                    return `<div class="value" data-name="${lineName}" style="color: ${this.chartData.colors[lineName]}"><span>42</span>${this.chartData.names[lineName]}</div>`;
                 }).join('');
         }
 
@@ -400,8 +402,9 @@ class Chart {
         this.infoDOM.style.display = 'inherit';
         this.infoDOM.style = `left: ${Math.round(e.pageX + (isLeftSide ? 10 : -10 - this.infoDOM.clientWidth))}px; top: ${Math.round(e.pageY - 10 - this.infoDOM.clientHeight)}px`;
         this.info.date.innerText = new Date(this.chartData.columns['x'][this.chart.marker]).toString().slice(0, 10);
-        this.info.values.querySelectorAll('.values span').forEach(valueNode => {
-            valueNode.innerText = this.chartData.columns[valueNode.dataset.name][this.chart.marker];
+        this.info.values.querySelectorAll('.values > *').forEach(valueNode => {
+            valueNode.style.display = this.chartData.enabled[valueNode.dataset.name] ? 'inherit' : 'none';
+            valueNode.children[0].innerText = this.chartData.columns[valueNode.dataset.name][this.chart.marker];
         });
 
         if (oldMarker !== this.chart.marker) {
@@ -428,7 +431,7 @@ fetch("chart_data.json")
     .then(chart_data => {
         for (const chart of chart_data) {
             const DOM = chartsDOM.appendChild(document.createElement('div'));
-            new Chart({DOM, chartData: chart, width: Math.min(DOM.clientWidth, 400)})
+            new Chart({DOM, chartData: chart, fitsContainer: true, maxWidth: 400})
         }
     });
 
