@@ -7,6 +7,7 @@ class Chart {
     constructor(params) {
         this.DOM = params.DOM;
         this.chartData = params.chartData;
+        this.dpx = devicePixelRatio || 1;
         this.chartData.columns = this.chartData.columns.reduce((acc, elem) => {
             acc[elem[0]] = elem.slice(1);
             return acc;
@@ -17,7 +18,10 @@ class Chart {
             fChart: this.drawFullChart.bind(this),
             ctrl: this.drawControl.bind(this)
         });
-        this.chartData.enabled = Object.keys(this.chartData.names).reduce((acc,name)=>{acc[name] = true; return acc},{});
+        this.chartData.enabled = Object.keys(this.chartData.names).reduce((acc, name) => {
+            acc[name] = true;
+            return acc
+        }, {});
 
         this.chartData.currentOpacity = {};
         for (let name in this.chartData.names) {
@@ -38,12 +42,13 @@ class Chart {
         this.chartData.max = Math.max.apply(null, Object.values(this.chartData.maxs));
 
         this.DOM.className += ' chart';
-        const width = params.fitsContainer ? this.DOM.clientWidth : params.width;
-        this.DOM.innerHTML = `<canvas class="board" width="${width}" height="${width}"></canvas>
-        <div class="control"><canvas class="fullChart" width="${width}" height="${width / 8}"/></canvas>
-        <canvas class="chartsControl" width="${width}" height="${width / 8}"/></canvas></div>`;
+        const width = (params.fitsContainer ? this.DOM.clientWidth : params.width);
+        const trueWidth = width * this.dpx;
+        this.DOM.innerHTML = `<canvas class="board" width="${trueWidth}" height="${trueWidth}" style="width:${width}px;height: ${width}px"></canvas>
+        <div class="control"><canvas class="fullChart" width="${trueWidth}" height="${trueWidth / 8}" style="width:${width}px;height: ${width / 8}px"/></canvas>
+        <canvas class="chartsControl" width="${trueWidth}" height="${trueWidth / 8}"  style="width:${width}px;height: ${width / 8}px"/></canvas></div>`;
 
-        if(!document.getElementById('info')){
+        if (!document.getElementById('info')) {
             document.body.insertAdjacentHTML(
                 'beforeend',
                 `<div id="info" style="display:none"><div class="date"></div><div class="values"></div></div>`);
@@ -54,22 +59,24 @@ class Chart {
         const control = this.DOM.getElementsByClassName('chartsControl')[0];
         this.controlDOM = control;
         this.controlCtx = control.getContext('2d');
+        this.controlCtx.scale(this.dpx, this.dpx);
         this.control = {
-            width: control.width,
-            height: control.height,
-            slide: {
-                start: roundFn(control.width * (1 - slideLengthRate)),
-                length: roundFn(control.width * slideLengthRate),
-                panelLength: roundFn(slidePanelLength * control.width)
-            }
+            width: control.width / this.dpx,
+            height: control.height / this.dpx
+        };
+        this.control.slide = {
+            start: roundFn(this.control.width * (1 - slideLengthRate)),
+            length: roundFn(this.control.width * slideLengthRate),
+            panelLength: roundFn(slidePanelLength * this.control.width)
         };
 
         const chart = this.DOM.getElementsByClassName('board')[0];
         this.chartDOM = chart;
         this.chartCtx = chart.getContext('2d');
+        this.chartCtx.scale(this.dpx, this.dpx);
         this.chart = {
-            width: chart.width,
-            height: chart.height,
+            width: chart.width / this.dpx,
+            height: chart.height / this.dpx,
             marker: null,
             range: {},
         };
@@ -92,9 +99,10 @@ class Chart {
 
         const fullChart = this.DOM.getElementsByClassName('fullChart')[0];
         this.fullChartCtx = fullChart.getContext('2d');
+        this.fullChartCtx.scale(this.dpx, this.dpx);
         this.fullChart = {
-            width: fullChart.width,
-            height: fullChart.height
+            width: fullChart.width/this.dpx,
+            height: fullChart.height/this.dpx
         };
 
         this.infoDOM = document.getElementById('info');
@@ -185,24 +193,24 @@ class Chart {
             this.chartCtx.fillStyle = `rgba(180, 180, 180, ${valueDivisions[division]})`;
             this.chartCtx.beginPath();
             this.chartCtx.moveTo(
-                roundFn(dateScalePaddingPx/2),
-                roundFn(this.chart.height - division * yMult - dateScalePaddingPx*2),
+                roundFn(dateScalePaddingPx / 2),
+                roundFn(this.chart.height - division * yMult - dateScalePaddingPx * 2),
             );
             this.chartCtx.lineTo(
                 roundFn(this.chart.width),
-                roundFn(this.chart.height - division * yMult - dateScalePaddingPx*2),
+                roundFn(this.chart.height - division * yMult - dateScalePaddingPx * 2),
             );
             this.chartCtx.stroke();
             this.chartCtx.fillText(division.toString(),
-                roundFn(dateScalePaddingPx/2),
-                this.chart.height - division * yMult - dateScalePaddingPx*2 - 5
+                roundFn(dateScalePaddingPx / 2),
+                this.chart.height - division * yMult - dateScalePaddingPx * 2 - 5
             );
         }
 
 
         //lines
         this.chartCtx.lineWidth = 1.5;
-        const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name]!==0);
+        const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name] !== 0);
         for (let lineName of enabledNames) {
             this.chartCtx.strokeStyle = this.chartData.colors[lineName];
             this.chartCtx.globalAlpha = this.chartData.currentOpacity[lineName];
@@ -211,7 +219,7 @@ class Chart {
                 //skip points don has effect on test dataset
                 this.chartCtx.lineTo(
                     roundFn((columns['x'][i] - xStart) * xMult),
-                    roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx*2)
+                    roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx * 2)
                 );
             }
             this.chartCtx.stroke();
@@ -247,14 +255,14 @@ class Chart {
                 this.chartCtx.beginPath();
                 this.chartCtx.arc(
                     markerX,
-                    this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx*2,
-                    5,0,Math.PI*2,true);
+                    this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx * 2,
+                    5, 0, Math.PI * 2, true);
                 this.chartCtx.fill();
                 this.chartCtx.beginPath();
                 this.chartCtx.arc(
                     markerX,
-                    this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx*2,
-                    5,0,Math.PI*2,true);
+                    this.chart.height - columns[lineName][this.chart.marker] * yMult - dateScalePaddingPx * 2,
+                    5, 0, Math.PI * 2, true);
                 this.chartCtx.stroke();
             }
 
@@ -273,7 +281,7 @@ class Chart {
         const yMult = 1 / this.chart.maxHeight * this.fullChart.height;
 
         //lines
-        const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name]!==0);
+        const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name] !== 0);
         this.fullChartCtx.lineWidth = 1.5;
         for (let lineName of enabledNames) {
             this.fullChartCtx.strokeStyle = this.chartData.colors[lineName];
@@ -321,16 +329,15 @@ class Chart {
         const offsetXfromControl = (e.pageX || e.touches[0].pageX)
             - this.controlDOM.offsetLeft - this.DOM.offsetLeft
             - slide.start;
-        const targetType = offsetXfromControl > 0 - touchMultipler*slide.panelLength && offsetXfromControl < slide.panelLength+touchMultipler*2*slide.panelLength ? 'leftPanel' :
-            offsetXfromControl > slide.length - touchMultipler*slide.panelLength && offsetXfromControl < slide.length - slide.panelLength + touchMultipler*2*slide.panelLength ? 'rightPanel' :
+        const targetType = offsetXfromControl > 0 - touchMultipler * slide.panelLength && offsetXfromControl < slide.panelLength + touchMultipler * 2 * slide.panelLength ? 'leftPanel' :
+            offsetXfromControl > slide.length - touchMultipler * slide.panelLength && offsetXfromControl < slide.length - slide.panelLength + touchMultipler * 2 * slide.panelLength ? 'rightPanel' :
                 offsetXfromControl > 0 && offsetXfromControl < slide.length - slide.panelLength ? 'centerPanel' :
                     null;
         let firstPointOffset = slide.length / 2;
-        if (targetType === 'centerPanel'){
+        if (targetType === 'centerPanel') {
             firstPointOffset = offsetXfromControl;
         }
         const changeControlAction = (e) => {
-                console.log(e.type,targetType, e);
                 const controlOffsetX = (e.pageX || e.touches[0].pageX) - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
                 if (targetType === 'leftPanel') {
                     const possibleStart = roundFn(controlOffsetX - slide.panelLength / 2);
@@ -352,7 +359,6 @@ class Chart {
                 this.graphController.update(['chart', 'ctrl']);
             },
             stopWatch = (e) => {
-                console.log('END', e.type);
                 document.body.removeEventListener('mousemove', changeControlAction);
                 document.body.removeEventListener('touchmove', changeControlAction);
                 document.body.removeEventListener('mouseup', stopWatch);
@@ -404,7 +410,7 @@ class Chart {
     }
 
     onChooseLine(e) {
-        if(Object.values(this.chartData.enabled).filter(en => en).length <= 1 && !e.target.checked){
+        if (Object.values(this.chartData.enabled).filter(en => en).length <= 1 && !e.target.checked) {
             //not on my shift
             e.preventDefault();
             return;
@@ -422,10 +428,10 @@ fetch("chart_data.json")
     .then(chart_data => {
         for (const chart of chart_data) {
             const DOM = chartsDOM.appendChild(document.createElement('div'));
-            new Chart({DOM, chartData: chart, width: Math.min(DOM.clientWidth,400)})
+            new Chart({DOM, chartData: chart, width: Math.min(DOM.clientWidth, 400)})
         }
     });
 
-document.getElementById('switchTheme').addEventListener('click',()=>{
+document.getElementById('switchTheme').addEventListener('click', () => {
     document.body.classList.toggle('night');
 })
