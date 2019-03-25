@@ -390,8 +390,9 @@ class Chart {
             ((e.pageX - xPadding) / this.chart.width * this.control.slide.length + this.control.slide.start) / this.control.width
             *
             (this.chartData.columns['x'].length - 1));
-
-        this.infoDOM.style = `left: ${Math.round(e.pageX + 10)}px; top: ${Math.round(e.pageY - 10 - this.infoDOM.clientHeight)}px`;
+        const isLeftSide = (e.pageX - xPadding) / this.chart.width < 0.5
+        this.infoDOM.style.display = 'inherit';
+        this.infoDOM.style = `left: ${Math.round(e.pageX + (isLeftSide ? 10 : -10 - this.infoDOM.clientWidth))}px; top: ${Math.round(e.pageY - 10 - this.infoDOM.clientHeight)}px`;
         this.info.date.innerText = new Date(this.chartData.columns['x'][this.chart.marker]).toString().slice(0, 10);
         this.info.values.querySelectorAll('.values span').forEach(valueNode => {
             valueNode.innerText = this.chartData.columns[valueNode.dataset.name][this.chart.marker];
