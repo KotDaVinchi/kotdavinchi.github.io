@@ -38,7 +38,7 @@ class Chart {
         this.chartData.max = Math.max.apply(null, Object.values(this.chartData.maxs));
 
         this.DOM.className += ' chart';
-        const width = params.fitsContainer ? this.DOM.width : params.width;
+        const width = params.fitsContainer ? this.DOM.clientWidth : params.width;
         this.DOM.innerHTML = `<canvas class="board" width="${width}" height="${width}"></canvas>
         <div class="control"><canvas class="fullChart" width="${width}" height="${width / 8}"/></canvas>
         <canvas class="chartsControl" width="${width}" height="${width / 8}"/></canvas></div>`;
@@ -132,6 +132,7 @@ class Chart {
         this.recalcChartVals();
         this.graphController.update();
         control.addEventListener('mousedown', this.mouseActionControl.bind(this), {passive: true});
+        control.addEventListener('touchstart', this.mouseActionControl.bind(this), {passive: true});
         control.addEventListener('dblclick', this.mouseActionControl.bind(this), {passive: true});
         chart.addEventListener('mousemove', this.mouseActionChart.bind(this), {passive: true});
         chart.addEventListener('mouseleave', this.mouseActionChart.bind(this), {passive: true});
@@ -316,13 +317,21 @@ class Chart {
             return;
         }
 
-        const offsetXfromControl = e.pageX - this.controlDOM.offsetLeft - this.DOM.offsetLeft - slide.start;
-        const targetType = offsetXfromControl > 0 && offsetXfromControl < slide.panelLength ? 'leftPanel' :
-            offsetXfromControl < slide.length && offsetXfromControl > slide.length - slide.panelLength ? 'rightPanel' :
-                null;
-
+        const touchMultipler = e.type === "touchstart";
+        const offsetXfromControl = (e.pageX || e.touches[0].pageX)
+            - this.controlDOM.offsetLeft - this.DOM.offsetLeft
+            - slide.start;
+        const targetType = offsetXfromControl > 0 - touchMultipler*slide.panelLength && offsetXfromControl < slide.panelLength+touchMultipler*2*slide.panelLength ? 'leftPanel' :
+            offsetXfromControl > slide.length - touchMultipler*slide.panelLength && offsetXfromControl < slide.length - slide.panelLength + touchMultipler*2*slide.panelLength ? 'rightPanel' :
+                offsetXfromControl > 0 && offsetXfromControl < slide.length - slide.panelLength ? 'centerPanel' :
+                    null;
+        let firstPointOffset = slide.length / 2;
+        if (targetType === 'centerPanel'){
+            firstPointOffset = offsetXfromControl;
+        }
         const changeControlAction = (e) => {
-                const controlOffsetX = e.pageX - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
+                console.log(e.type,targetType, e);
+                const controlOffsetX = (e.pageX || e.touches[0].pageX) - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
                 if (targetType === 'leftPanel') {
                     const possibleStart = roundFn(controlOffsetX - slide.panelLength / 2);
                     const newStart = Math.max(0, Math.min(slide.start + slide.length - slide.panelLength * 2, possibleStart));
@@ -335,7 +344,7 @@ class Chart {
                     slide.length = newEnd - slide.start;
 
                 } else {
-                    const possibleStart = roundFn(controlOffsetX - slide.length / 2);
+                    const possibleStart = roundFn(controlOffsetX - firstPointOffset);
                     slide.start = Math.max(0, Math.min(this.control.width - slide.length, possibleStart));
                 }
 
@@ -343,14 +352,21 @@ class Chart {
                 this.graphController.update(['chart', 'ctrl']);
             },
             stopWatch = (e) => {
+                console.log('END', e.type);
                 document.body.removeEventListener('mousemove', changeControlAction);
+                document.body.removeEventListener('touchmove', changeControlAction);
                 document.body.removeEventListener('mouseup', stopWatch);
                 document.body.removeEventListener('mouseleave', stopWatch);
+                document.body.removeEventListener('touchend', stopWatch);
+                document.body.removeEventListener('touchcancel', stopWatch);
             };
         changeControlAction(e);
         document.body.addEventListener('mousemove', changeControlAction, {passive: true});
+        document.body.addEventListener('touchmove', changeControlAction, {passive: true});
         document.body.addEventListener('mouseup', stopWatch, {once: true, passive: true});
         document.body.addEventListener('mouseleave', stopWatch, {once: true, passive: true});
+        document.body.addEventListener('touchend', stopWatch, {once: true, passive: true});
+        document.body.addEventListener('touchcancel', stopWatch, {once: true, passive: true});
     }
 
     mouseActionChart(e) {
@@ -404,7 +420,8 @@ fetch("chart_data.json")
     .then(responce => responce.json())
     .then(chart_data => {
         for (const chart of chart_data) {
-            new Chart({DOM: chartsDOM.appendChild(document.createElement('div')), chartData: chart, width: 400})
+            const DOM = chartsDOM.appendChild(document.createElement('div'));
+            new Chart({DOM, chartData: chart, width: Math.min(DOM.clientWidth,400)})
         }
     });
 
