@@ -3,6 +3,7 @@ html, body {
     margin: 0;
     font-family: sans-serif;
     color: black;
+    transition: background-color 1s linear;
 }
 
 body.night{
@@ -109,6 +110,7 @@ body.night #info{
     z-index: -1000;
     left: -1000px;
     overflow: hidden;
+    opacity: 0;
 }
 
 #info {

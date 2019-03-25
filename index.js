@@ -375,8 +375,6 @@ class Chart {
             *
             (this.chartData.columns['x'].length - 1));
 
-        console.log(e, this.chart.marker, this.chartData.columns['x'][this.chart.marker]);
-
         this.infoDOM.style = `left: ${Math.round(e.pageX + 10)}px; top: ${Math.round(e.pageY - 10 - this.infoDOM.clientHeight)}px`;
         this.info.date.innerText = new Date(this.chartData.columns['x'][this.chart.marker]).toString().slice(0, 10);
         this.info.values.querySelectorAll('.values span').forEach(valueNode => {
