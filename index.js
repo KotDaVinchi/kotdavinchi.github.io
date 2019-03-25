@@ -368,11 +368,14 @@ class Chart {
         }
 
 
+        const xPadding = this.chartDOM.getBoundingClientRect().x;
         const oldMarker = this.chart.marker;
         this.chart.marker = Math.round(
-            (e.pageX / this.chart.width * this.control.slide.length + this.control.slide.start) / this.control.width
+            ((e.pageX - xPadding) / this.chart.width * this.control.slide.length + this.control.slide.start) / this.control.width
             *
             (this.chartData.columns['x'].length - 1));
+
+        console.log(e, this.chart.marker, this.chartData.columns['x'][this.chart.marker]);
 
         this.infoDOM.style = `left: ${Math.round(e.pageX + 10)}px; top: ${Math.round(e.pageY - 10 - this.infoDOM.clientHeight)}px`;
         this.info.date.innerText = new Date(this.chartData.columns['x'][this.chart.marker]).toString().slice(0, 10);
