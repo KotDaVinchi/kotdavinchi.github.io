@@ -483,11 +483,10 @@ const chartsDOM = document.getElementById('charts');
 fetch("chart_data.json")
     .then(responce => responce.json())
     .then(chart_data => {
-        // for (const chart of chart_data) {
-        const chart = chart_data[4];
+        for (const chart of chart_data) {
             const DOM = chartsDOM.appendChild(document.createElement('div'));
             new Chart({DOM, chartData: chart, fitsContainer: true, maxWidth: 400})
-        // }
+        }
     });
 
 document.getElementById('switchTheme').addEventListener('click', () => {
