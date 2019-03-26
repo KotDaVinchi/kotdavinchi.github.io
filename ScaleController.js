@@ -6,9 +6,11 @@ const roundTemplate = {
 }
 
 class ScaleController {
-    constructor(graphController, speed, updatedFuctions) {
+    constructor(graphController, speed, dpx, color, updatedFuctions) {
         this.graphController = graphController;
         this.speed = speed;
+        this.color = color;
+        this.dpx = dpx;
         this.updatedFunction = updatedFuctions;
         this.axis = {
             x: {
@@ -20,7 +22,16 @@ class ScaleController {
                 prevDivisions: []
             }
         };
+    }
 
+    createVirtualCanvas(length) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 6 * length * this.dpx;
+        canvas.height = 10 * this.dpx;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = this.color;
+        ctx.scale(this.dpx, this.dpx);
+        return [canvas, ctx];
     }
 
     makeScaleDivisions(a, b, template) {
@@ -32,8 +43,8 @@ class ScaleController {
             min: Number.MAX_SAFE_INTEGER
         };
         for (let i = 0; i < precMap.length; i++) {
-            if( precMap[i] < minValue.min ){
-                minValue = {i, min: precMap[i] }
+            if (precMap[i] < minValue.min) {
+                minValue = {i, min: precMap[i]}
             } else {
                 break;
             }
@@ -44,7 +55,7 @@ class ScaleController {
         return Array(Math.ceil((b - firstLabel) / template[iMin])).fill(0).map((_, i) => firstLabel + template[iMin] * i);
     }
 
-    getAxisDivisions(axisName, left, right) {//date
+    getAxisDivisions(axisName, left, right, convertFn) {//date
         const divisions = this.makeScaleDivisions(left, right, roundTemplate[axisName]);
         const axis = this.axis[axisName];
         axis.prevDivisions.concat(divisions).forEach(division => {
@@ -52,19 +63,27 @@ class ScaleController {
                 inNew = divisions.indexOf(division) + 1;
 
             if (inPrev && !inNew) {
-                axis.colorMap[division] = 0;
+                axis.colorMap[division].opacity = 0;
             }
             if (inNew && !inPrev) {
                 if (!(division in axis.colorMap)) {
+                    console.log('create context');
+                    const text = convertFn(division);
+                    const [canvas, ctx] = this.createVirtualCanvas(text.length);
+                    ctx.fillText(text, 0, canvas.height);
+                    axis.colorMap[division] = {
+                        text: canvas
+                    };
                     this.graphController.animatedValueFactory({
-                        ctx: axis.colorMap,
-                        name: division,
+                        ctx: axis.colorMap[division],
+                        name: 'opacity',
                         startValue: 0,
                         speed: this.speed,
-                        updFnIds: this.updatedFunction
+                        updFnIds: this.updatedFunction,
+                        //onEndAnimacion: () => {if(axis.colorMap[division].opacity === 0 ) {delete this.axis[axisName].colorMap[division]}}
                     })
                 }
-                axis.colorMap[division] = 1;
+                axis.colorMap[division].opacity = 1;
             }
         });
         axis.prevDivisions = divisions;

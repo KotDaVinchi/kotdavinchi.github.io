@@ -3,6 +3,47 @@ const slideLengthRate = 0.2;
 const slidePanelLength = 0.02;
 const dateScalePaddingPx = 15;
 
+class TimeCounter {
+    constructor(){
+        this.counters = {};
+    }
+
+    startTime(name){
+        this.counters[name] = this.counters[name] || {
+            sumTime: 0,
+            countTime: 0
+        };
+        this.counters[name].inProgressTime = performance.now();
+    }
+
+    endTime(name){
+        const perf = performance.now();
+        if(!(name in this.counters)){
+            console.error('timer dont declarate');
+            return;
+        }
+        this.counters[name].sumTime += perf-this.counters[name].inProgressTime;
+        this.counters[name].countTime += 1;
+    }
+
+    getTiming(){
+        const output = {};
+        for( const [name, counter] of Object.entries(this.counters)) {
+            output[name] = {
+                avTime: counter.sumTime / counter.countTime,
+                countTime: this.counters[name].countTime
+            }
+        }
+        console.table(output);
+    }
+
+    clearTime(){
+        this.counters = {};
+    }
+}
+
+window.timeCounter = new TimeCounter();
+
 class Chart {
     constructor(params) {
         this.DOM = params.DOM;
@@ -56,7 +97,7 @@ class Chart {
                 `<div id="info" style="display:none"><div class="date"></div><div class="values"></div></div>`);
         }
 
-        this.scaleController = new ScaleController(this.graphController, 0.005, ['chart']);
+        this.scaleController = new ScaleController(this.graphController, 0.005, this.dpx, 'rgb(180, 180, 180)', ['chart']);
 
         const control = this.DOM.getElementsByClassName('chartsControl')[0];
         this.controlDOM = control;
@@ -185,14 +226,16 @@ class Chart {
         const maxXValue = this.chart.currentMaxHeight;
         const yMult = 1 / maxXValue * (this.chart.height - dateScalePaddingPx * 2);
 
-
-        const valueDivisions = this.scaleController.getAxisDivisions('y', 0, maxXValue);
+        timeCounter.startTime('Y axis');
+        const valueDivisions = this.scaleController.getAxisDivisions('y', 0, maxXValue, x => x.toString());
         this.chartCtx.lineWidth = 1;
-        this.chartCtx.textAlign = 'left';
+        this.chartCtx.strokeStyle = `rgb(180, 180, 180)`;
+        // this.chartCtx.textAlign = 'left';
         for (const division in valueDivisions) {
             if (!valueDivisions.hasOwnProperty(division)) continue;
-            this.chartCtx.strokeStyle = `rgba(180, 180, 180, ${valueDivisions[division]})`;
-            this.chartCtx.fillStyle = `rgba(180, 180, 180, ${valueDivisions[division]})`;
+            if (valueDivisions[division].opacity === 0) continue;
+            // this.chartCtx.fillStyle = `rgba(180, 180, 180, ${valueDivisions[division].opacity})`;
+            this.chartCtx.globalAlpha = valueDivisions[division].opacity;
             this.chartCtx.beginPath();
             this.chartCtx.moveTo(
                 roundFn(dateScalePaddingPx / 2),
@@ -203,13 +246,15 @@ class Chart {
                 roundFn(this.chart.height - division * yMult - dateScalePaddingPx * 2),
             );
             this.chartCtx.stroke();
-            this.chartCtx.fillText(division.toString(),
-                roundFn(dateScalePaddingPx / 2),
-                this.chart.height - division * yMult - dateScalePaddingPx * 2 - 5
-            );
+            this.chartCtx.drawImage(valueDivisions[division].text,
+                Math.round(dateScalePaddingPx / 2),
+                Math.round(this.chart.height - division * yMult - dateScalePaddingPx*2 - 13));
         }
+        this.chartCtx.globalAlpha = 1;
+        timeCounter.endTime('Y axis');
 
 
+        timeCounter.startTime('Graph lines');
         //lines
         this.chartCtx.lineWidth = 1.5;
         const enabledNames = Object.keys(this.chartData.currentOpacity).filter(name => this.chartData.currentOpacity[name] !== 0);
@@ -227,23 +272,33 @@ class Chart {
             this.chartCtx.stroke();
         }
         this.chartCtx.globalAlpha = 1;
+        timeCounter.endTime('Graph lines');
 
-        //draw axis x - date
+        timeCounter.startTime('X axis');
+        // draw axis x - date
         const left = this.chart.window.xStart,
             right = this.chart.window.xEnd;
-        const dateDivisions = this.scaleController.getAxisDivisions('x', left, right);
+        const dateDivisions = this.scaleController.getAxisDivisions('x', left, right, (division) => new Date(parseInt(division)).toString().slice(4, 10));
         this.chartCtx.lineWidth = 1.5;
-        this.chartCtx.textAlign = 'center';
-        for (const divis in dateDivisions) {
-            if (!dateDivisions.hasOwnProperty(divis)) continue;
-            this.chartCtx.fillStyle = `rgba(180, 180 ,180 ,${dateDivisions[divis]})`;
-            this.chartCtx.fillText(new Date(parseInt(divis)).toString().slice(4, 10),
-                roundFn((divis - xStart) * xMult),
-                this.chart.height - dateScalePaddingPx + 8);
+        // this.chartCtx.textAlign = 'center';
+        this.chartCtx.fillStyle = `rgba(180, 180 ,180)`;
+        for (const division in dateDivisions) {
+            if (!dateDivisions.hasOwnProperty(division)) continue;
+            if (dateDivisions[division].opacity === 0) continue;
+            this.chartCtx.globalAlpha = dateDivisions[division].opacity;
+            this.chartCtx.drawImage(dateDivisions[division].text,
+                Math.round((division - xStart) * xMult - dateDivisions[division].text.width/2),
+                Math.round(this.chart.height - dateScalePaddingPx));
+            // this.chartCtx.fillText(new Date(parseInt(division)).toString().slice(4, 10),
+            //     roundFn((division - xStart) * xMult),
+            //     this.chart.height - dateScalePaddingPx + 8);
         }
+        this.chartCtx.globalAlpha = 1;
+        timeCounter.endTime('X axis');
 
         //marker
         if (this.chart.marker) {
+            timeCounter.startTime('Marker');
             const markerX = roundFn((columns['x'][this.chart.marker] - xStart) * xMult);
             this.chartCtx.lineWidth = 1;
             this.chartCtx.strokeStyle = 'rgb(180, 180 ,180)';
@@ -267,10 +322,9 @@ class Chart {
                     5, 0, Math.PI * 2, true);
                 this.chartCtx.stroke();
             }
+            timeCounter.endTime('Marker');
 
         }
-
-
         console.timeEnd('drawChart');
     }
 
@@ -429,10 +483,11 @@ const chartsDOM = document.getElementById('charts');
 fetch("chart_data.json")
     .then(responce => responce.json())
     .then(chart_data => {
-        for (const chart of chart_data) {
+        // for (const chart of chart_data) {
+        const chart = chart_data[4];
             const DOM = chartsDOM.appendChild(document.createElement('div'));
             new Chart({DOM, chartData: chart, fitsContainer: true, maxWidth: 400})
-        }
+        // }
     });
 
 document.getElementById('switchTheme').addEventListener('click', () => {
