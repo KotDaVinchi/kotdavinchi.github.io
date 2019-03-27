@@ -30,7 +30,7 @@ class ScaleController {
         canvas.height = 10 * this.dpx;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = this.color;
-        ctx.scale(this.dpx, this.dpx);
+        // ctx.scale(this.dpx, this.dpx);
         return [canvas, ctx];
     }
 
@@ -69,9 +69,10 @@ class ScaleController {
                 if (!(division in axis.colorMap)) {
                     const text = convertFn(division);
                     const [canvas, ctx] = this.createVirtualCanvas(text.length);
-                    ctx.fillText(text, 0, canvas.height);
+                    ctx.fillText(text, 0, Math.floor(canvas.height/this.dpx));
                     axis.colorMap[division] = {
-                        text: canvas
+                        text: canvas,
+                        size : {width:canvas.width/this.dpx,height:canvas.height/this.dpx}
                     };
                     this.graphController.animatedValueFactory({
                         ctx: axis.colorMap[division],

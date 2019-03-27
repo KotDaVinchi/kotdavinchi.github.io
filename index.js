@@ -287,7 +287,7 @@ class Chart {
             if (dateDivisions[division].opacity === 0) continue;
             this.chartCtx.globalAlpha = dateDivisions[division].opacity;
             this.chartCtx.drawImage(dateDivisions[division].text,
-                Math.round((division - xStart) * xMult - dateDivisions[division].text.width/2),
+                Math.round((division - xStart) * xMult - dateDivisions[division].size.width/2),
                 Math.round(this.chart.height - dateScalePaddingPx));
             // this.chartCtx.fillText(new Date(parseInt(division)).toString().slice(4, 10),
             //     roundFn((division - xStart) * xMult),
