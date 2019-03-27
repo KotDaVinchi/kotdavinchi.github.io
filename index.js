@@ -383,26 +383,29 @@ class Chart {
 
         const touchMultipler = e.type === "touchstart";
         const offsetXfromControl = (e.pageX || e.touches[0].pageX)
-            - this.controlDOM.offsetLeft - this.DOM.offsetLeft
+            - this.controlDOM.offsetParent.offsetLeft - this.DOM.offsetLeft
             - slide.start;
         const targetType = offsetXfromControl > 0 - touchMultipler * slide.panelLength && offsetXfromControl < slide.panelLength + touchMultipler * 2 * slide.panelLength ? 'leftPanel' :
-            offsetXfromControl > slide.length - touchMultipler * slide.panelLength && offsetXfromControl < slide.length - slide.panelLength + touchMultipler * 2 * slide.panelLength ? 'rightPanel' :
+            offsetXfromControl > slide.length - slide.panelLength - touchMultipler * 2 * slide.panelLength &&  offsetXfromControl < slide.length + touchMultipler * slide.panelLength ? 'rightPanel' :
                 offsetXfromControl > 0 && offsetXfromControl < slide.length - slide.panelLength ? 'centerPanel' :
                     null;
         let firstPointOffset = slide.length / 2;
-        if (targetType === 'centerPanel') {
+        if (targetType) {
             firstPointOffset = offsetXfromControl;
+            if(targetType === 'rightPanel'){
+                firstPointOffset -= slide.length;
+            }
         }
         const changeControlAction = (e) => {
-                const controlOffsetX = (e.pageX || e.touches[0].pageX) - this.controlDOM.offsetLeft - this.DOM.offsetLeft;
+                const controlOffsetX = (e.pageX || e.touches[0].pageX) - this.controlDOM.offsetParent.offsetLeft - this.DOM.offsetLeft;
                 if (targetType === 'leftPanel') {
-                    const possibleStart = roundFn(controlOffsetX - slide.panelLength / 2);
+                    const possibleStart = roundFn(controlOffsetX - firstPointOffset);
                     const newStart = Math.max(0, Math.min(slide.start + slide.length - slide.panelLength * 2, possibleStart));
                     slide.length = slide.start + slide.length - newStart;
                     slide.start = newStart;
 
                 } else if (targetType === 'rightPanel') {
-                    const possibleEnd = roundFn(controlOffsetX + slide.panelLength / 2);
+                    const possibleEnd = roundFn(controlOffsetX - firstPointOffset);
                     const newEnd = Math.max(slide.start + slide.panelLength * 2, Math.min(this.control.width, possibleEnd));
                     slide.length = newEnd - slide.start;
 

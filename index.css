@@ -3,10 +3,13 @@ html, body {
     font-family: sans-serif;
     color: black;
     transition: background-color 1s linear;
-    padding: 10px;
     overflow-x: hidden;
     width: 100%;
     box-sizing: border-box;
+}
+
+body {
+    padding: 10px;
 }
 
 body.night{

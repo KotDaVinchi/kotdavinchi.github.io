@@ -67,7 +67,6 @@ class ScaleController {
             }
             if (inNew && !inPrev) {
                 if (!(division in axis.colorMap)) {
-                    console.log('create context');
                     const text = convertFn(division);
                     const [canvas, ctx] = this.createVirtualCanvas(text.length);
                     ctx.fillText(text, 0, canvas.height);
