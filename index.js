@@ -2,6 +2,7 @@ const roundFn = (x) => x;//Math.round;
 const slideLengthRate = 0.2;
 const slidePanelLength = 0.02;
 const dateScalePaddingPx = 15;
+const valueScalePaddingPx = 10
 
 class TimeCounter {
     constructor() {
@@ -88,8 +89,8 @@ class Chart {
         if (params.maxWidth) width = Math.min(width, params.maxWidth);
         const trueWidth = width * this.dpx;
         this.DOM.innerHTML = `<canvas class="board" width="${trueWidth}" height="${trueWidth}" style="width:${width}px;height: ${width}px"></canvas>
-        <div class="control"><canvas class="fullChart" width="${trueWidth}" height="${trueWidth / 8}" style="width:${width}px;height: ${width / 8}px"/></canvas>
-        <canvas class="chartsControl" width="${trueWidth}" height="${trueWidth / 8}"  style="width:${width}px;height: ${width / 8}px"/></canvas></div>`;
+        <div class="control"><canvas class="fullChart" width="${trueWidth}" height="${trueWidth / 8}" style="width:${width-valueScalePaddingPx*2}px;height: ${width / 8}px"/></canvas>
+        <canvas class="chartsControl" width="${trueWidth}" height="${trueWidth / 8}"  style="width:${width-valueScalePaddingPx*2}px;height: ${width / 8}px"/></canvas></div>`;
 
         if (!document.getElementById('info')) {
             document.body.insertAdjacentHTML(
@@ -243,27 +244,24 @@ class Chart {
             } else if (x>800){
                 return (x/1000).toPrecision().toString()+'k'
             } else
-                return x.toString()});
+                return x.toString()
+        });
         this.chartCtx.lineWidth = 1;
         this.chartCtx.strokeStyle = `rgb(180, 180, 180)`;
-        // this.chartCtx.textAlign = 'left';
         for (const division in valueDivisions) {
+            //can be optimising by gropping lines by opacity and drawing with single path
             if (!valueDivisions.hasOwnProperty(division)) continue;
-            // this.chartCtx.fillStyle = `rgba(180, 180, 180, ${valueDivisions[division].opacity})`;
             this.chartCtx.globalAlpha = valueDivisions[division].opacity;
             this.chartCtx.beginPath();
             this.chartCtx.moveTo(
-                roundFn(dateScalePaddingPx / 2),
+                roundFn(valueScalePaddingPx),
                 roundFn(this.chart.height - division * yMult - dateScalePaddingPx * 2),
             );
             this.chartCtx.lineTo(
-                roundFn(this.chart.width),
+                roundFn(this.chart.width-valueScalePaddingPx),
                 roundFn(this.chart.height - division * yMult - dateScalePaddingPx * 2),
             );
             this.chartCtx.stroke();
-            this.chartCtx.drawImage(valueDivisions[division].text,
-                Math.round(dateScalePaddingPx / 2),
-                Math.round(this.chart.height - division * yMult - dateScalePaddingPx * 2 - 13));
         }
         this.chartCtx.globalAlpha = 1;
         timeCounter.endTime('Y axis');
@@ -278,7 +276,6 @@ class Chart {
             this.chartCtx.globalAlpha = this.chartData.currentOpacity[lineName];
             this.chartCtx.beginPath();
             for (let i = this.chart.range.left; i <= this.chart.range.right; i++) {
-                //skip points don has effect on test dataset
                 this.chartCtx.lineTo(
                     roundFn((columns['x'][i] - xStart) * xMult),
                     roundFn(this.chart.height - columns[lineName][i] * yMult - dateScalePaddingPx * 2)
@@ -295,7 +292,6 @@ class Chart {
             right = this.chart.window.xEnd;
         const dateDivisions = this.scaleController.getAxisDivisions('x', left, right, (division) => new Date(parseInt(division)).toString().slice(4, 10));
         this.chartCtx.lineWidth = 1.5;
-        // this.chartCtx.textAlign = 'center';
         this.chartCtx.fillStyle = `rgba(180, 180 ,180)`;
         for (const division in dateDivisions) {
             if (!dateDivisions.hasOwnProperty(division)) continue;
@@ -307,6 +303,18 @@ class Chart {
         }
         this.chartCtx.globalAlpha = 1;
         timeCounter.endTime('X axis');
+
+
+        this.chartCtx.lineWidth = 1;
+        this.chartCtx.strokeStyle = `rgb(180, 180, 180)`;
+        for (const division in valueDivisions) {
+            if (!valueDivisions.hasOwnProperty(division)) continue;
+            this.chartCtx.globalAlpha = valueDivisions[division].opacity;
+            this.chartCtx.drawImage(valueDivisions[division].text,
+                Math.round(valueScalePaddingPx),
+                Math.round(this.chart.height - division * yMult - dateScalePaddingPx * 2 - 13));
+        }
+        this.chartCtx.globalAlpha = 1;
 
         //marker
         if (this.chart.marker) {
@@ -371,11 +379,11 @@ class Chart {
         this.controlCtx.clearRect(0, 0, this.control.width, this.control.height);
 
         const slide = this.control.slide;
-        this.controlCtx.strokeStyle = '#8888FFAA';
-        this.controlCtx.fillStyle = '#8888FFAA';
+        this.controlCtx.strokeStyle = '#c0d1e1aa';
+        this.controlCtx.fillStyle = '#c0d1e1aa';
         this.controlCtx.fillRect(slide.start, 0, slide.panelLength, this.control.height);
         this.controlCtx.fillRect(slide.start + slide.length - slide.panelLength, 0, slide.panelLength, this.control.height);
-        this.controlCtx.fillStyle = '#6666FF33';
+        this.controlCtx.fillStyle = '#c0d1e133';
         this.controlCtx.fillRect(0, 0, slide.start, this.control.height);
         this.controlCtx.fillRect(slide.start + slide.length, 0, this.control.width - slide.start + slide.length, this.control.height);
         this.controlCtx.strokeRect(slide.start, 0, slide.length, this.control.height);
