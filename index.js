@@ -411,10 +411,10 @@ class Chart {
                     const newEnd = Math.max(slide.start + slide.panelLength * 2, Math.min(this.control.width, possibleEnd));
                     slide.length = newEnd - slide.start;
 
-                } else {
+                } else if (targetType === 'centerPanel') {
                     const possibleStart = roundFn(controlOffsetX - firstPointOffset);
                     slide.start = Math.max(0, Math.min(this.control.width - slide.length, possibleStart));
-                }
+                } else return;
 
                 this.recalcChartVals();
                 this.graphController.update(['chart', 'ctrl']);
