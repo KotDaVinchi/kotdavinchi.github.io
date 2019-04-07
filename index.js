@@ -4,11 +4,11 @@ const slidePanelLength = 0.02;
 const dateScalePaddingPx = 15;
 
 class TimeCounter {
-    constructor(){
+    constructor() {
         this.counters = {};
     }
 
-    startTime(name){
+    startTime(name) {
         this.counters[name] = this.counters[name] || {
             sumTime: 0,
             countTime: 0
@@ -16,19 +16,19 @@ class TimeCounter {
         this.counters[name].inProgressTime = performance.now();
     }
 
-    endTime(name){
+    endTime(name) {
         const perf = performance.now();
-        if(!(name in this.counters)){
+        if (!(name in this.counters)) {
             console.error('timer dont declarate');
             return;
         }
-        this.counters[name].sumTime += perf-this.counters[name].inProgressTime;
+        this.counters[name].sumTime += perf - this.counters[name].inProgressTime;
         this.counters[name].countTime += 1;
     }
 
-    getTiming(){
+    getTiming() {
         const output = {};
-        for( const [name, counter] of Object.entries(this.counters)) {
+        for (const [name, counter] of Object.entries(this.counters)) {
             output[name] = {
                 avTime: counter.sumTime / counter.countTime,
                 countTime: this.counters[name].countTime
@@ -37,7 +37,7 @@ class TimeCounter {
         console.table(output);
     }
 
-    clearTime(){
+    clearTime() {
         this.counters = {};
     }
 }
@@ -77,7 +77,7 @@ class Chart {
         }
 
         this.chartData.maxs = {};
-        Object.keys(this.chartData.colors).forEach(name => {
+        Object.keys(this.chartData.names).forEach(name => {
             this.chartData.maxs[name] = Math.max.apply(null, this.chartData.columns[name]);
         });
         this.chartData.max = Math.max.apply(null, Object.values(this.chartData.maxs));
@@ -85,7 +85,7 @@ class Chart {
         this.DOM.className += 'chart';
         const styles = getComputedStyle(this.DOM);
         let width = (params.fitsContainer ? this.DOM.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight) : params.width);
-        if(params.maxWidth) width = Math.min(width, params.maxWidth);
+        if (params.maxWidth) width = Math.min(width, params.maxWidth);
         const trueWidth = width * this.dpx;
         this.DOM.innerHTML = `<canvas class="board" width="${trueWidth}" height="${trueWidth}" style="width:${width}px;height: ${width}px"></canvas>
         <div class="control"><canvas class="fullChart" width="${trueWidth}" height="${trueWidth / 8}" style="width:${width}px;height: ${width / 8}px"/></canvas>
@@ -101,7 +101,7 @@ class Chart {
 
         const control = this.DOM.getElementsByClassName('chartsControl')[0];
         this.controlDOM = control;
-        this.controlCtx = control.getContext('2d');
+        this.controlCtx = control.getContext('2d',{antialias: false, stencil: false});
         this.controlCtx.scale(this.dpx, this.dpx);
         this.control = {
             width: control.width / this.dpx,
@@ -115,7 +115,7 @@ class Chart {
 
         const chart = this.DOM.getElementsByClassName('board')[0];
         this.chartDOM = chart;
-        this.chartCtx = chart.getContext('2d');
+        this.chartCtx = chart.getContext('2d',{antialias: false, stencil: false});
         this.chartCtx.scale(this.dpx, this.dpx);
         this.chart = {
             width: chart.width / this.dpx,
@@ -141,11 +141,11 @@ class Chart {
         });
 
         const fullChart = this.DOM.getElementsByClassName('fullChart')[0];
-        this.fullChartCtx = fullChart.getContext('2d');
+        this.fullChartCtx = fullChart.getContext('2d',{antialias: false, stencil: false});
         this.fullChartCtx.scale(this.dpx, this.dpx);
         this.fullChart = {
-            width: fullChart.width/this.dpx,
-            height: fullChart.height/this.dpx
+            width: fullChart.width / this.dpx,
+            height: fullChart.height / this.dpx
         };
 
         this.infoDOM = document.getElementById('info');
@@ -227,13 +227,18 @@ class Chart {
         const yMult = 1 / maxXValue * (this.chart.height - dateScalePaddingPx * 2);
 
         timeCounter.startTime('Y axis');
-        const valueDivisions = this.scaleController.getAxisDivisions('y', 0, maxXValue, x => x.toString());
+        const valueDivisions = this.scaleController.getAxisDivisions('y', 0, maxXValue, x => {
+            if(x>=800000){
+                return (x/1000000).toPrecision().toString()+'M'
+            } else if (x>800){
+                return (x/1000).toPrecision().toString()+'k'
+            } else
+                return x.toString()});
         this.chartCtx.lineWidth = 1;
         this.chartCtx.strokeStyle = `rgb(180, 180, 180)`;
         // this.chartCtx.textAlign = 'left';
         for (const division in valueDivisions) {
             if (!valueDivisions.hasOwnProperty(division)) continue;
-            if (valueDivisions[division].opacity === 0) continue;
             // this.chartCtx.fillStyle = `rgba(180, 180, 180, ${valueDivisions[division].opacity})`;
             this.chartCtx.globalAlpha = valueDivisions[division].opacity;
             this.chartCtx.beginPath();
@@ -248,7 +253,7 @@ class Chart {
             this.chartCtx.stroke();
             this.chartCtx.drawImage(valueDivisions[division].text,
                 Math.round(dateScalePaddingPx / 2),
-                Math.round(this.chart.height - division * yMult - dateScalePaddingPx*2 - 13));
+                Math.round(this.chart.height - division * yMult - dateScalePaddingPx * 2 - 13));
         }
         this.chartCtx.globalAlpha = 1;
         timeCounter.endTime('Y axis');
@@ -287,11 +292,8 @@ class Chart {
             if (dateDivisions[division].opacity === 0) continue;
             this.chartCtx.globalAlpha = dateDivisions[division].opacity;
             this.chartCtx.drawImage(dateDivisions[division].text,
-                Math.round((division - xStart) * xMult - dateDivisions[division].size.width/2),
+                Math.round((division - xStart) * xMult - dateDivisions[division].size.width / 2),
                 Math.round(this.chart.height - dateScalePaddingPx));
-            // this.chartCtx.fillText(new Date(parseInt(division)).toString().slice(4, 10),
-            //     roundFn((division - xStart) * xMult),
-            //     this.chart.height - dateScalePaddingPx + 8);
         }
         this.chartCtx.globalAlpha = 1;
         timeCounter.endTime('X axis');
@@ -386,13 +388,13 @@ class Chart {
             - this.controlDOM.offsetParent.offsetLeft - this.DOM.offsetLeft
             - slide.start;
         const targetType = offsetXfromControl > 0 - touchMultipler * slide.panelLength && offsetXfromControl < slide.panelLength + touchMultipler * 2 * slide.panelLength ? 'leftPanel' :
-            offsetXfromControl > slide.length - slide.panelLength - touchMultipler * 2 * slide.panelLength &&  offsetXfromControl < slide.length + touchMultipler * slide.panelLength ? 'rightPanel' :
+            offsetXfromControl > slide.length - slide.panelLength - touchMultipler * 2 * slide.panelLength && offsetXfromControl < slide.length + touchMultipler * slide.panelLength ? 'rightPanel' :
                 offsetXfromControl > 0 && offsetXfromControl < slide.length - slide.panelLength ? 'centerPanel' :
                     null;
         let firstPointOffset = slide.length / 2;
         if (targetType) {
             firstPointOffset = offsetXfromControl;
-            if(targetType === 'rightPanel'){
+            if (targetType === 'rightPanel') {
                 firstPointOffset -= slide.length;
             }
         }
@@ -487,8 +489,9 @@ fetch("chart_data.json")
     .then(responce => responce.json())
     .then(chart_data => {
         for (const chart of chart_data) {
-            const DOM = chartsDOM.appendChild(document.createElement('div'));
-            new Chart({DOM, chartData: chart, fitsContainer: true, maxWidth: 400})
+        // const chart = chart_data[4];
+        const DOM = chartsDOM.appendChild(document.createElement('div'));
+        new Chart({DOM, chartData: chart, fitsContainer: true, maxWidth: 400})
         }
     });
 
