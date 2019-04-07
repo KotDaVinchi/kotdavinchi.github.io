@@ -162,17 +162,27 @@ class Chart {
                 const label = document.createElement('label');
                 const input = document.createElement('input');
                 const icon = document.createElement('div');
+                const innerButton = document.createElement('span');
+                const nameContainer = document.createElement('span');
+
                 icon.className = 'icon';
-                icon.style.borderColor = this.chartData.colors[name];
-                icon.style.backgroundColor = this.chartData.colors[name];
+
+                label.style.borderColor = label.style.backgroundColor =  label.style.color = this.chartData.colors[name];
+
                 input.type = 'checkbox';
                 input.name = name;
                 input.checked = true;
-                input.style.borderColor = this.chartData.colors[name];
+
+                innerButton.className = 'innerButton';
+
+                nameContainer.className = 'nameContainer';
+                nameContainer.innerText = this.chartData.names[name];
+
+                innerButton.appendChild(icon);
+                innerButton.appendChild(nameContainer);
                 input.addEventListener('click', this.onChooseLine.bind(this));
                 label.appendChild(input);
-                label.appendChild(icon);
-                label.appendChild(document.createTextNode(this.chartData.names[name]));
+                label.appendChild(innerButton);
                 return label;
             }).reduce((lines, input) => {
                 lines.appendChild(input);
